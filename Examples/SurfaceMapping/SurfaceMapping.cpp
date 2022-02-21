@@ -18,5 +18,6 @@ int main() {
 
   cmSurfaceMapper<NumericType, D>(baseMesh, depoMesh).apply();
 
-  lsVTKWriter<NumericType>(depoMesh, "depoMesh.vtp").apply();
+  lsVTKWriter<NumericType>(depoMesh, "mapped_mesh.vtp").apply();
+  lsVTKWriter<NumericType>(baseMesh, "annotated_mesh.vtp").apply();
 }

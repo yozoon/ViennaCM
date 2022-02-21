@@ -13,7 +13,7 @@ MACRO(SUBDIRLIST result curdir)
   SET(dirlist "")
   FOREACH(child ${children})
     IF(IS_DIRECTORY ${curdir}/${child})
-      IF(NOT ${child} STREQUAL "build")
+      IF(NOT ${child} STREQUAL "build" AND NOT ${child} STREQUAL "CommonData")
         LIST(APPEND dirlist ${child})
       ENDIF()
     ENDIF()
@@ -22,9 +22,6 @@ MACRO(SUBDIRLIST result curdir)
 ENDMACRO()
 
 add_custom_target(buildExamples)
-
-#set(ViennaLS_DIR "${ViennaLS_BINARY_DIR}")
-#set(ViennaLS_COMMON_TARGET ${PROJECT_NAME})
 
 SUBDIRLIST(EXAMPLE_DIRS ${CMAKE_CURRENT_LIST_DIR})
 

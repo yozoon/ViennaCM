@@ -1,7 +1,8 @@
+#include <lsBooleanOperation.hpp>
+#include <lsGeometricAdvect.hpp>
+#include <lsMakeGeometry.hpp>
 #include <lsToSurfaceMesh.hpp>
 #include <lsVTKWriter.hpp>
-
-#include <lsVTKReader.hpp>
 
 #include "cmMoveSurface.hpp"
 
@@ -12,14 +13,42 @@ void printLS(lsSmartPointer<lsDomain<NumericType, D>> dom, std::string name) {
   lsVTKWriter<NumericType>(mesh, name).apply();
 }
 
+template <typename NumericType>
+void makeTaperedTrench(lsSmartPointer<lsMesh<>> mesh,
+                       hrleVectorType<NumericType, 2> center,
+                       hrleVectorType<NumericType, 2> taperAngle,
+                       double diameter, NumericType depth) {
+  auto cloud = lsSmartPointer<lsPointCloud<NumericType, 2>>::New();
+  {
+    // top left
+    hrleVectorType<NumericType, 2> point1(-diameter / 2., 0.);
+    cloud->insertNextPoint(point1);
+    // top right
+    hrleVectorType<NumericType, 2> point2(diameter / 2., 0.);
+    cloud->insertNextPoint(point2);
+    // bottom right
+    hrleVectorType<NumericType, 2> point3(
+        diameter / 2. - (depth * taperAngle[1] / taperAngle[0]), -depth);
+    cloud->insertNextPoint(point3);
+    // bottom left
+    hrleVectorType<NumericType, 2> point4(
+        -diameter / 2. + (depth * taperAngle[1] / taperAngle[0]), -depth);
+    cloud->insertNextPoint(point4);
+  }
+  lsConvexHull<NumericType, 2>(mesh, cloud).apply();
+}
+
 int main() {
   constexpr int D = 2;
   using NumericType = double;
 
   constexpr NumericType gridDelta = 0.5;
 
+  NumericType diameter = 20;
+  NumericType depth = 50;
+
   // Process parameters
-  NumericType extent = 50;
+  NumericType extent = diameter;
   NumericType bounds[2 * D] = {-extent, extent, -extent, extent};
   if constexpr (D == 3) {
     bounds[4] = -extent;
@@ -36,15 +65,48 @@ int main() {
 
   auto substrate = lsSmartPointer<lsDomain<NumericType, D>>::New(
       bounds, boundaryCons, gridDelta);
+  {
+    NumericType origin[D] = {0.};
+    NumericType planeNormal[D] = {0.};
+    planeNormal[D - 1] = 1.;
+    auto plane =
+        lsSmartPointer<lsPlane<NumericType, D>>::New(origin, planeNormal);
+    lsMakeGeometry<NumericType, D>(substrate, plane).apply();
+  }
 
-  auto substrateMesh = lsSmartPointer<lsMesh<>>::New();
-  lsVTKReader<NumericType>(substrateMesh, "substrate.vtp").apply();
-  lsFromSurfaceMesh<NumericType, D>(substrate, substrateMesh, false).apply();
+  {
+    auto hole = lsSmartPointer<lsDomain<NumericType, D>>::New(
+        bounds, boundaryCons, gridDelta);
 
-  auto movedLayer = lsSmartPointer<lsDomain<NumericType, D>>::New(substrate);
+    // create hole
+
+    hrleVectorType<NumericType, D> minCorner;
+    minCorner[0] = -diameter / 2;
+    minCorner[D - 1] = -depth;
+    if constexpr (D == 3)
+      minCorner[1] = -diameter / 2;
+
+    hrleVectorType<NumericType, D> maxCorner;
+    maxCorner[0] = diameter / 2;
+    maxCorner[D - 1] = gridDelta;
+    if constexpr (D == 3)
+      maxCorner[1] = diameter / 2;
+
+    auto box = lsSmartPointer<lsBox<NumericType, D>>::New(minCorner, maxCorner);
+
+    lsMakeGeometry<NumericType, D>(hole, box).apply();
+
+    lsBooleanOperation<NumericType, D>(
+        substrate, hole, lsBooleanOperationEnum::RELATIVE_COMPLEMENT)
+        .apply();
+  }
+
+  printLS(substrate, "surface.vtp");
+
+  auto depoLayer = lsSmartPointer<lsDomain<NumericType, D>>::New(substrate);
 
   NumericType thickness = 4.;
-  cmMoveSurface<NumericType, D>(substrate, movedLayer, thickness).apply();
+  cmMoveSurface<NumericType, D>(substrate, depoLayer, thickness).apply();
 
-  printLS(movedLayer, "moved.vtp");
+  printLS(depoLayer, "moved.vtp");
 }

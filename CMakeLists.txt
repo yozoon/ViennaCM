@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD "17")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(ViennaLS REQUIRED PATHS ${ViennaLS_DIR})
+find_package(ViennaRay REQUIRED PATHS ${ViennRay_DIR})
 
 #add_executable(lt src/layerThickness.cpp)
 include_directories(lt PUBLIC include)

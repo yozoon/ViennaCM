@@ -39,13 +39,16 @@ void makeTaperedTrench(lsSmartPointer<lsMesh<>> mesh,
 }
 
 int main() {
-  constexpr int D = 2;
+  constexpr int D = 3;
   using NumericType = double;
 
-  constexpr NumericType gridDelta = 0.5;
+  constexpr NumericType gridDelta = 0.25;
+
+  NumericType diameter = 20;
+  NumericType depth = 50;
 
   // Process parameters
-  NumericType extent = 50;
+  NumericType extent = diameter;
   NumericType bounds[2 * D] = {-extent, extent, -extent, extent};
   if constexpr (D == 3) {
     bounds[4] = -extent;
@@ -63,28 +66,38 @@ int main() {
   auto substrate = lsSmartPointer<lsDomain<NumericType, D>>::New(
       bounds, boundaryCons, gridDelta);
   {
-    NumericType origin[D] = {0., 0.};
-    NumericType planeNormal[D] = {0., 1.};
+    NumericType origin[D] = {0.};
+    NumericType planeNormal[D] = {0.};
+    planeNormal[D - 1] = 1.;
     auto plane =
         lsSmartPointer<lsPlane<NumericType, D>>::New(origin, planeNormal);
     lsMakeGeometry<NumericType, D>(substrate, plane).apply();
   }
 
-  // make LS from trench mesh and remove from substrate
   {
-    auto trench = lsSmartPointer<lsDomain<NumericType, D>>::New(
+    auto hole = lsSmartPointer<lsDomain<NumericType, D>>::New(
         bounds, boundaryCons, gridDelta);
-    // create trench
-    hrleVectorType<NumericType, 2> center(0., 0.);
-    hrleVectorType<NumericType, 2> normSide(1, 0);
-    NumericType diameter = 20;
-    NumericType depth = 50;
 
-    auto trenchMesh = lsSmartPointer<lsMesh<>>::New();
-    makeTaperedTrench(trenchMesh, center, normSide, diameter, depth);
-    lsFromSurfaceMesh<NumericType, D>(trench, trenchMesh, false).apply();
+    // create hole
+
+    hrleVectorType<NumericType, D> minCorner;
+    minCorner[0] = -diameter / 2;
+    minCorner[D - 1] = -depth;
+    if constexpr (D == 3)
+      minCorner[1] = -diameter / 2;
+
+    hrleVectorType<NumericType, D> maxCorner;
+    maxCorner[0] = diameter / 2;
+    maxCorner[D - 1] = gridDelta;
+    if constexpr (D == 3)
+      maxCorner[1] = diameter / 2;
+
+    auto box = lsSmartPointer<lsBox<NumericType, D>>::New(minCorner, maxCorner);
+
+    lsMakeGeometry<NumericType, D>(hole, box).apply();
+
     lsBooleanOperation<NumericType, D>(
-        substrate, trench, lsBooleanOperationEnum::RELATIVE_COMPLEMENT)
+        substrate, hole, lsBooleanOperationEnum::RELATIVE_COMPLEMENT)
         .apply();
   }
 
