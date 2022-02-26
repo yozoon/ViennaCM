@@ -1,11 +1,14 @@
 #ifndef CM_SURFACE_MAPPER_HPP
 #define CM_SURFACE_MAPPER_HPP
 
+#include <unordered_map>
+
 #include <lsMesh.hpp>
 #include <lsMessage.hpp>
 #include <lsSmartPointer.hpp>
 
 #include "cmKDTree.hpp"
+#include "cmVectorHash.hpp"
 
 template <class T, int D> class cmSurfaceMapper {
   lsSmartPointer<lsMesh<>> baseSurface = nullptr;
@@ -28,26 +31,44 @@ public:
       return;
     }
 
-    using CoordType = typename decltype(baseSurface->nodes)::value_type;
-
     // Copy nodes to a new location
-    auto nodes = baseSurface->nodes;
-    auto points = lsSmartPointer<decltype(nodes)>::New(nodes);
+    auto baseNodes = baseSurface->nodes;
 
-    auto kdtree = lsSmartPointer<cmKDTree<T, D, CoordType>>::New(points);
+    using VectorType = typename decltype(baseNodes)::value_type;
+
+    std::unordered_map<VectorType, size_t, cmVectorHash<VectorType>> lut;
+    lut.reserve(baseNodes.size());
+
+    size_t i = 0;
+    std::vector<double> nodeIDs;
+    nodeIDs.reserve(baseNodes.size());
+
+    for (const auto &node : baseNodes) {
+      lut.insert(std::pair{node, i});
+      nodeIDs.push_back(i);
+      i++;
+    }
+
+    auto points = lsSmartPointer<decltype(baseNodes)>::New(baseNodes);
+
+    auto kdtree = lsSmartPointer<cmKDTree<T, D, VectorType>>::New(points);
 
     kdtree->build();
 
-    std::vector<double> layerThickness(advectedSurface->nodes.size(), -1);
+    std::vector<hrleCoordType> nearestNodeIDs;
+    nearestNodeIDs.reserve(advectedSurface->nodes.size());
 
-    for (int i = 0; i < advectedSurface->nodes.size(); ++i) {
-      const auto &node = advectedSurface->nodes[i];
-      auto nearest = kdtree->nearest(node);
-      layerThickness[i] = nearest.second;
+    const auto &nodes = advectedSurface->nodes;
+    for (size_t i = 0; i < advectedSurface->nodes.size(); ++i) {
+      auto nearest = kdtree->nearest(nodes[i]);
+      auto id = lut[nearest.first];
+
+      nearestNodeIDs.push_back(lut[nearest.first]);
     }
 
-    advectedSurface->getCellData().insertNextScalarData(layerThickness,
-                                                        "thickness");
+    baseSurface->getPointData().insertNextScalarData(nodeIDs, "ID");
+    advectedSurface->getPointData().insertNextScalarData(nearestNodeIDs,
+                                                         "nearestNode");
   }
 };
 

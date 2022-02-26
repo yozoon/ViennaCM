@@ -39,10 +39,10 @@ void makeTaperedTrench(lsSmartPointer<lsMesh<>> mesh,
 }
 
 int main() {
-  constexpr int D = 3;
+  static constexpr int D = 2;
   using NumericType = double;
 
-  constexpr NumericType gridDelta = 0.25;
+  static constexpr NumericType gridDelta = .5;
 
   NumericType diameter = 20;
   NumericType depth = 50;
@@ -103,12 +103,12 @@ int main() {
 
   auto depoLayer = lsSmartPointer<lsDomain<NumericType, D>>::New(substrate);
 
-  printLS(depoLayer, "surface_i.vtp");
+  printLS(depoLayer, "surface_i.vtk");
 
   auto dist = lsSmartPointer<cmEllipsoidDistribution<hrleCoordType, D>>::New(
       1., 5., 1., gridDelta);
 
   lsGeometricAdvect<NumericType, D>(depoLayer, dist).apply();
 
-  printLS(depoLayer, "surface_f.vtp");
+  printLS(depoLayer, "surface_f.vtk");
 }

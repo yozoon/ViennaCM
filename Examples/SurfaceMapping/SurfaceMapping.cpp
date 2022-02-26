@@ -1,8 +1,8 @@
 #include <lsFromSurfaceMesh.hpp>
 
 #include <lsMesh.hpp>
-#include <lsVTKWriter.hpp>
 #include <lsVTKReader.hpp>
+#include <lsVTKWriter.hpp>
 
 #include "cmSurfaceMapper.hpp"
 
@@ -11,10 +11,10 @@ int main() {
   using NumericType = double;
 
   auto baseMesh = lsSmartPointer<lsMesh<>>::New();
-  lsVTKReader<NumericType>(baseMesh, "substrate.vtp").apply();
+  lsVTKReader<NumericType>(baseMesh, "first.vtk").apply();
 
   auto depoMesh = lsSmartPointer<lsMesh<>>::New();
-  lsVTKReader<NumericType>(depoMesh, "deposited.vtp").apply();
+  lsVTKReader<NumericType>(depoMesh, "second.vtk").apply();
 
   cmSurfaceMapper<NumericType, D>(baseMesh, depoMesh).apply();
 

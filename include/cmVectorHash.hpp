@@ -4,7 +4,10 @@
 #include <hrleVectorType.hpp>
 #include <utility>
 
-template <class T, int D> class cmVectorHash {
+template <class VectorType> class cmVectorHash {
+  using T = typename VectorType::value_type;
+  static constexpr int D = std::tuple_size<VectorType>::value;
+
 private:
   //  https://stackoverflow.com/questions/5889238/why-is-xor-the-default-way-to-combine-hashes
   std::size_t hash_combine(std::size_t lhs, std::size_t rhs) const {
@@ -13,7 +16,7 @@ private:
   }
 
 public:
-  std::size_t operator()(const hrleVectorType<T, D> &v) const {
+  std::size_t operator()(const VectorType &v) const {
     using std::hash;
     using std::size_t;
     std::size_t result = hash<T>()(v[0]);
@@ -24,4 +27,5 @@ public:
     return result;
   }
 };
+
 #endif

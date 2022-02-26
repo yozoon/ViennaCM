@@ -1,3 +1,6 @@
+#ifndef CM_KDTREE_HPP
+#define CM_KDTREE_HPP
+
 #include <algorithm>
 #include <array>
 #include <map>
@@ -24,7 +27,6 @@ enum struct cmKDTreeDistanceEnum : unsigned { EUCLIDEAN = 0, CUSTOM = 1 };
 template <class T, int D, class CoordType> class cmKDTree {
 public:
   using SizeType = std::size_t;
-  //using CoordType = std::array<T, D>;
   using DistanceFunctionType = T (*)(const CoordType &, const CoordType &);
 
 private:
@@ -46,7 +48,6 @@ public:
     CoordType &value;
     int axis;
 
-    Node *parent = nullptr;
     Node *left = nullptr;
     Node *right = nullptr;
 
@@ -104,7 +105,7 @@ private:
     SizeType size = end - start;
 
     int axis = depth % D;
-    // TODO: Add bucket size parameter
+
     if (size > 1) {
       SizeType medianIndex = (size + 1) / 2 - 1;
       std::nth_element(
@@ -250,10 +251,8 @@ public:
       return;
     }
 
-    if (rootNode != nullptr) {
-      std::cout << "Tree has already been built" << std::endl;
-      return;
-    }
+    if (rootNode != nullptr)
+      recursiveFree(rootNode);
 
 #pragma omp parallel default(none)                                             \
     shared(numThreads, maxParallelDepth, surplusWorkers, std::cout, rootNode,  \
@@ -323,3 +322,5 @@ public:
 
   ~cmKDTree() { recursiveFree(rootNode); }
 };
+
+#endif
