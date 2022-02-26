@@ -158,13 +158,10 @@ private:
     }
   }
 
-  void recursiveFree(Node *node) {
+  void recursiveDelete(Node *node) {
     if (node != nullptr) {
-      if (node->left != nullptr)
-        recursiveFree(node->left);
-      if (node->right != nullptr)
-        recursiveFree(node->right);
-
+      recursiveDelete(node->left);
+      recursiveDelete(node->right);
       delete node;
     }
   }
@@ -252,7 +249,7 @@ public:
     }
 
     if (rootNode != nullptr)
-      recursiveFree(rootNode);
+      recursiveDelete(rootNode);
 
 #pragma omp parallel default(none)                                             \
     shared(numThreads, maxParallelDepth, surplusWorkers, std::cout, rootNode,  \
@@ -320,7 +317,7 @@ public:
     return {best.first->value, distanceInternal(x, best.first->value)};
   }
 
-  ~cmKDTree() { recursiveFree(rootNode); }
+  ~cmKDTree() { recursiveDelete(rootNode); }
 };
 
 #endif
