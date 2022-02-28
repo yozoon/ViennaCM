@@ -23,8 +23,8 @@ inline double get_time() {
 }
 
 template <class T, int D>
-std::shared_ptr<std::vector<std::array<T, D>>> generatePoints(int N) {
-  auto data = std::make_shared<std::vector<std::array<T, D>>>();
+lsSmartPointer<std::vector<std::array<T, D>>> generatePoints(int N) {
+  auto data = lsSmartPointer<std::vector<std::array<T, D>>>::New();
   data->reserve(N);
   std::random_device rd{};
   std::mt19937 gen{rd()};
