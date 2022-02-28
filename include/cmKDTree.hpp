@@ -24,10 +24,10 @@ int intLog2(int x) {
 
 enum struct cmKDTreeDistanceEnum : unsigned { EUCLIDEAN = 0, CUSTOM = 1 };
 
-template <class T, int D, class CoordType> class cmKDTree {
+template <class T, int D, class VectorType> class cmKDTree {
 public:
   using SizeType = std::size_t;
-  using DistanceFunctionType = T (*)(const CoordType &, const CoordType &);
+  using DistanceFunctionType = T (*)(const VectorType &, const VectorType &);
 
 private:
   SizeType N;
@@ -37,7 +37,7 @@ private:
   int maxParallelDepth = 0;
   int surplusWorkers = 0;
 
-  lsSmartPointer<std::vector<CoordType>> points = nullptr;
+  lsSmartPointer<std::vector<VectorType>> points = nullptr;
 
   cmKDTreeDistanceEnum distanceType = cmKDTreeDistanceEnum::EUCLIDEAN;
   DistanceFunctionType customDistance = nullptr;
@@ -45,13 +45,13 @@ private:
 
 public:
   struct Node {
-    CoordType &value;
+    VectorType &value;
     int axis;
 
     Node *left = nullptr;
     Node *right = nullptr;
 
-    Node(CoordType &passedValue, int passedAxis)
+    Node(VectorType &passedValue, int passedAxis)
         : value(passedValue), axis(passedAxis) {}
   };
 
@@ -99,8 +99,8 @@ public:
 private:
   Node *rootNode = nullptr;
 
-  void build(Node *parent, typename std::vector<CoordType>::iterator start,
-             typename std::vector<CoordType>::iterator end, int depth,
+  void build(Node *parent, typename std::vector<VectorType>::iterator start,
+             typename std::vector<VectorType>::iterator end, int depth,
              bool isLeft) {
     SizeType size = end - start;
 
@@ -110,7 +110,7 @@ private:
       SizeType medianIndex = (size + 1) / 2 - 1;
       std::nth_element(
           start, start + medianIndex, end,
-          [&](CoordType &a, CoordType &b) { return a[axis] < b[axis]; });
+          [&](VectorType &a, VectorType &b) { return a[axis] < b[axis]; });
 
       Node *current = new Node(*(start + medianIndex), axis);
 
@@ -166,7 +166,7 @@ private:
     }
   }
 
-  static T euclideanReducedDistance(const CoordType &a, const CoordType &b) {
+  static T euclideanReducedDistance(const VectorType &a, const VectorType &b) {
     T sum{0};
     for (int i = 0; i < D; i++) {
       T d = b[i] - a[i];
@@ -175,11 +175,11 @@ private:
     return sum;
   }
 
-  static T euclideanDistance(const CoordType &a, const CoordType &b) {
+  static T euclideanDistance(const VectorType &a, const VectorType &b) {
     return std::sqrt(euclideanReducedDistance(a, b));
   }
 
-  T distanceReducedInternal(const CoordType &a, const CoordType &b) const {
+  T distanceReducedInternal(const VectorType &a, const VectorType &b) const {
     switch (distanceType) {
     case cmKDTreeDistanceEnum::CUSTOM:
       return customReducedDistance(a, b);
@@ -189,7 +189,7 @@ private:
     }
   }
 
-  T distanceInternal(const CoordType &a, const CoordType &b) const {
+  T distanceInternal(const VectorType &a, const VectorType &b) const {
     switch (distanceType) {
     case cmKDTreeDistanceEnum::CUSTOM:
       return customDistance(a, b);
@@ -200,7 +200,7 @@ private:
 
   std::pair<Node *, T> &traverseDown(Node *currentNode,
                                      std::pair<Node *, T> &best,
-                                     const CoordType &x) const {
+                                     const VectorType &x) const {
     if (currentNode == nullptr)
       return best;
 
@@ -238,13 +238,13 @@ private:
 public:
   cmKDTree() {}
 
-  cmKDTree(lsSmartPointer<std::vector<CoordType>> passedPoints)
+  cmKDTree(lsSmartPointer<std::vector<VectorType>> passedPoints)
       : N(passedPoints != nullptr ? passedPoints->size() : 0),
         points(passedPoints) {}
 
   void build() {
     if (points == nullptr) {
-      std::cout << "No points available" << std::endl;
+      lsMessage::getInstance().addWarning("No points provided!").print();
       return;
     }
 
@@ -272,7 +272,7 @@ public:
 
         std::nth_element(
             points->begin(), points->begin() + medianIndex, points->end(),
-            [&](CoordType &a, CoordType &b) { return a[0] < b[0]; });
+            [&](VectorType &a, VectorType &b) { return a[0] < b[0]; });
 
         rootNode = new Node(*(points->begin() + medianIndex), 0);
 
@@ -310,7 +310,7 @@ public:
     }
   }
 
-  std::pair<CoordType, T> nearest(const CoordType &x) const {
+  std::pair<VectorType, T> nearest(const VectorType &x) const {
     auto best = std::pair{rootNode, std::numeric_limits<T>::infinity()};
     best = traverseDown(rootNode, best, x);
 
