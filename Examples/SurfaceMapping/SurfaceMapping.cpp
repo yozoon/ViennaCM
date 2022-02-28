@@ -12,31 +12,27 @@ int main() {
   constexpr int D = 2;
   using NumericType = double;
 
+  // Load both meshes
   auto baseMesh = lsSmartPointer<lsMesh<>>::New();
   lsVTKReader<NumericType>(baseMesh, "first.vtk").apply();
 
   auto depoMesh = lsSmartPointer<lsMesh<>>::New();
   lsVTKReader<NumericType>(depoMesh, "second.vtk").apply();
 
-  // Copy nodes to a new location
-  auto baseNodes = baseMesh->nodes;
+  using VectorType = typename decltype(baseMesh->nodes)::value_type;
 
-  using VectorType = typename decltype(baseNodes)::value_type;
-
-  std::unordered_map<VectorType, size_t, cmVectorHash<VectorType>> lut;
-  lut.reserve(baseNodes.size());
+  const auto &baseNodes = baseMesh->nodes;
 
   size_t i = 0;
   std::vector<double> nodeIDs;
   nodeIDs.reserve(baseNodes.size());
 
   for (const auto &node : baseNodes) {
-    lut.insert(std::pair{node, i});
     nodeIDs.push_back(i);
     i++;
   }
 
-  auto points = lsSmartPointer<decltype(baseNodes)>::New(baseNodes);
+  auto points = lsSmartPointer<decltype(baseMesh->nodes)>::New(baseMesh->nodes);
 
   auto kdtree =
       lsSmartPointer<cmKDTree<NumericType, D, VectorType>>::New(points);
@@ -49,9 +45,7 @@ int main() {
   for (size_t i = 0; i < depoMesh->nodes.size(); ++i) {
     auto nearest = kdtree->findNearest(nodes[i]);
 
-    auto id = lut[nearest.first];
-
-    nearestNodeIDs.push_back(id);
+    nearestNodeIDs.push_back(nearest.first);
   }
 
   baseMesh->getPointData().insertNextScalarData(nodeIDs, "ID");

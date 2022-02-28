@@ -45,6 +45,7 @@ private:
   int surplusWorkers = 0;
 
   lsSmartPointer<std::vector<VectorType>> points = nullptr;
+  lsSmartPointer<std::vector<SizeType>> pointIndices = nullptr;
 
   cmKDTreeDistanceEnum distanceType = cmKDTreeDistanceEnum::EUCLIDEAN;
   DistanceFunctionType customDistance = nullptr;
@@ -52,21 +53,21 @@ private:
 
 public:
   struct Node {
-    VectorType &value;
+    SizeType &index;
     int axis;
 
     Node *left = nullptr;
     Node *right = nullptr;
 
-    Node(VectorType &passedValue, int passedAxis)
-        : value(passedValue), axis(passedAxis) {}
+    Node(SizeType &passedIndex, int passedAxis)
+        : index(passedIndex), axis(passedAxis) {}
   };
 
 private:
   Node *rootNode = nullptr;
 
-  void build(Node *parent, typename std::vector<VectorType>::iterator start,
-             typename std::vector<VectorType>::iterator end, int depth,
+  void build(Node *parent, typename std::vector<SizeType>::iterator start,
+             typename std::vector<SizeType>::iterator end, int depth,
              bool isLeft) {
     SizeType size = end - start;
 
@@ -77,8 +78,9 @@ private:
       // TODO: We could think about adding custom comparison operations, which
       // would allow for splitting of the data along D arbitrary axes.
       std::nth_element(
-          start, start + medianIndex, end,
-          [&](VectorType &a, VectorType &b) { return a[axis] < b[axis]; });
+          start, start + medianIndex, end, [&](SizeType &a, SizeType &b) {
+            return points->operator[](a)[axis] < points->operator[](b)[axis];
+          });
 
       Node *current = new Node(*(start + medianIndex), axis);
 
@@ -134,6 +136,9 @@ private:
     }
   }
 
+  /****************************************************************************
+   * Distance Functions                                                       *
+   ****************************************************************************/
   static T manhattanReducedDistance(const VectorType &a, const VectorType &b) {
     T sum{0};
     for (int i = 0; i < D; i++)
@@ -182,6 +187,9 @@ private:
     }
   }
 
+  /****************************************************************************
+   * Recursive Tree Traversal                                                 *
+   ****************************************************************************/
   template <class Q>
   void traverseDown(Node *currentNode, Q &queue, const VectorType &x) const {
     if (currentNode == nullptr)
@@ -193,16 +201,17 @@ private:
     // compute intensive, but order preserving version of the distance
     // function.
     if constexpr (std::is_same_v<Q, cmBoundedPQueue<T, Node *>>) {
-      queue.enqueue(std::pair{distanceReducedInternal(x, currentNode->value),
-                              currentNode});
+      queue.enqueue(
+          std::pair{distanceReducedInternal(x, (*points)[currentNode->index]),
+                    currentNode});
     } else {
-      T distance = distanceReducedInternal(x, currentNode->value);
+      T distance = distanceReducedInternal(x, (*points)[currentNode->index]);
       if (distance < queue.second)
         queue = std::pair{currentNode, distance};
     }
 
     bool isLeft;
-    if (x[axis] < currentNode->value[axis]) {
+    if (x[axis] < (*points)[currentNode->index][axis]) {
       traverseDown(currentNode->left, queue, x);
       isLeft = true;
     } else {
@@ -216,14 +225,16 @@ private:
     // be points closer to x than our current best.
     if constexpr (std::is_same_v<Q, cmBoundedPQueue<T, Node *>>) {
       if (queue.size() < queue.maxSize() ||
-          std::abs(x[axis] - currentNode->value[axis]) < queue.worst()) {
+          std::abs(x[axis] - (*points)[currentNode->index][axis]) <
+              queue.worst()) {
         if (isLeft)
           traverseDown(currentNode->right, queue, x);
         else
           traverseDown(currentNode->left, queue, x);
       }
     } else {
-      if (std::abs(x[axis] - currentNode->value[axis]) < queue.second) {
+      if (std::abs(x[axis] - (*points)[currentNode->index][axis]) <
+          queue.second) {
         if (isLeft)
           traverseDown(currentNode->right, queue, x);
         else
@@ -249,30 +260,54 @@ public:
     if (rootNode != nullptr)
       recursiveDelete(rootNode);
 
+    // Initialize the point index vector
+    pointIndices = lsSmartPointer<std::vector<SizeType>>::New();
+    pointIndices->reserve(points->size());
+    // Create a new vector containing the point indices. This is the one we
+    // will
+    // modify with the sort operations later on. This ensures that the passed
+    // points won't be reordered.
+    // TODO: This can be parallelized!
+    {
+      auto pointIterator = pointIndices->begin();
+      for (SizeType i = 0; i < points->size(); i++) {
+        pointIndices->emplace(pointIterator, i);
+        pointIterator++;
+      }
+    }
+
 #pragma omp parallel default(none)                                             \
     shared(numThreads, maxParallelDepth, surplusWorkers, std::cout, rootNode,  \
-           treeSize, points)
+           treeSize, points, pointIndices)
     {
+      int threadID = 0;
 #pragma omp single
       {
 #ifdef _OPENMP
         numThreads = omp_get_num_threads();
+        threadID = omp_get_thread_num();
 #endif
         maxParallelDepth = intLog2(numThreads);
         surplusWorkers = numThreads - 1 << maxParallelDepth;
+      }
+
+#pragma omp single
+      {
 #ifndef NDEBUG
         std::cout << "Starting parallel region with " << numThreads
                   << " parallel workers." << std::endl;
 #endif
 
-        SizeType size = points->end() - points->begin();
+        SizeType size = pointIndices->end() - pointIndices->begin();
         SizeType medianIndex = (size + 1) / 2 - 1;
 
-        std::nth_element(
-            points->begin(), points->begin() + medianIndex, points->end(),
-            [&](VectorType &a, VectorType &b) { return a[0] < b[0]; });
+        std::nth_element(pointIndices->begin(),
+                         pointIndices->begin() + medianIndex,
+                         pointIndices->end(), [&](SizeType &a, SizeType &b) {
+                           return (*points)[a][0] < (*points)[b][0];
+                         });
 
-        rootNode = new Node(*(points->begin() + medianIndex), 0);
+        rootNode = new Node(*(pointIndices->begin() + medianIndex), 0);
 
 #ifdef _OPENMP
         bool dontSpawnMoreThreads = 0 > maxParallelDepth + 1 ||
@@ -288,49 +323,48 @@ public:
 #endif
 #endif
           // Left Subtree
-          build(rootNode,                      // Use rootNode as parent
-                points->begin(),               // Data start
-                points->begin() + medianIndex, // Data end
-                1,                             // Depth
-                true                           // Left
+          build(rootNode,                            // Use rootNode as parent
+                pointIndices->begin(),               // Data start
+                pointIndices->begin() + medianIndex, // Data end
+                1,                                   // Depth
+                true                                 // Left
           );
         }
 
         // Right Subtree
-        build(rootNode,                          // Use rootNode as parent
-              points->begin() + medianIndex + 1, // Data start
-              points->end(),                     // Data end
-              1,                                 // Depth
-              false                              // Right
+        build(rootNode,                                // Use rootNode as parent
+              pointIndices->begin() + medianIndex + 1, // Data start
+              pointIndices->end(),                     // Data end
+              1,                                       // Depth
+              false                                    // Right
         );
 #pragma omp taskwait
       }
     }
   }
 
-  std::pair<VectorType, T> findNearest(const VectorType &x) const {
+  std::pair<SizeType, T> findNearest(const VectorType &x) const {
     auto best = std::pair{rootNode, std::numeric_limits<T>::infinity()};
-    // auto queue = cmBoundedPQueue<T, Node *>(1);
     traverseDown(rootNode, best, x);
-    // auto best = queue.dequeueBest();
-    return {best.first->value, distanceInternal(x, best.first->value)};
+    return {best.first->index,
+            distanceInternal(x, (*points)[best.first->index])};
   }
 
-  lsSmartPointer<std::vector<std::pair<VectorType, T>>>
-  findKNearest(const VectorType &x, int k) const {
+  lsSmartPointer<std::vector<std::pair<SizeType, T>>>
+  findKNearest(const VectorType &x, const int k) const {
     auto queue = cmBoundedPQueue<T, Node *>(k);
     traverseDown(rootNode, queue, x);
 
-    auto initial =
-        std::pair<VectorType, T>{{0, 0, 0}, std::numeric_limits<T>::infinity()};
-    auto result = lsSmartPointer<std::vector<std::pair<VectorType, T>>>::New();
+    auto initial = std::pair<SizeType, T>{rootNode->index,
+                                          std::numeric_limits<T>::infinity()};
+    auto result = lsSmartPointer<std::vector<std::pair<SizeType, T>>>::New();
 
     // TODO: handle cases where k might be larger than the number of available
     // points
     while (!queue.empty()) {
       auto best = queue.dequeueBest();
       result->emplace_back(
-          std::pair{best->value, distanceInternal(x, best->value)});
+          std::pair{best->index, distanceInternal(x, (*points)[best->index])});
     }
     return result;
   }

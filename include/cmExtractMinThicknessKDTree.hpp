@@ -42,12 +42,10 @@ public:
     if (dataDestination->size() != 0)
       dataDestination->clear();
 
-    // Copy nodes to a new location
-    auto advNodes = advectedMesh->nodes;
-
-    auto points = lsSmartPointer<decltype(advNodes)>::New(advNodes);
-
     using VectorType = typename decltype(advNodes)::value_type;
+
+    auto points =
+        lsSmartPointer<decltype(advectedMesh->nodes)>::New(advectedMesh->nodes);
 
     auto kdtree = lsSmartPointer<cmKDTree<T, D, VectorType>>::New(points);
     kdtree->build();
