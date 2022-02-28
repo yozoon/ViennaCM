@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <lsMessage.hpp>
 #include <lsSmartPointer.hpp>
 
 #ifdef _OPENMP
@@ -77,10 +78,10 @@ private:
       SizeType medianIndex = (size + 1) / 2 - 1;
       // TODO: We could think about adding custom comparison operations, which
       // would allow for splitting of the data along D arbitrary axes.
-      std::nth_element(
-          start, start + medianIndex, end, [&](SizeType &a, SizeType &b) {
-            return points->operator[](a)[axis] < points->operator[](b)[axis];
-          });
+      std::nth_element(start, start + medianIndex, end,
+                       [&](SizeType &a, SizeType &b) {
+                         return (*points)[a][axis] < (*points)[b][axis];
+                       });
 
       Node *current = new Node(*(start + medianIndex), axis);
 
@@ -289,10 +290,7 @@ public:
 #endif
         maxParallelDepth = intLog2(numThreads);
         surplusWorkers = numThreads - 1 << maxParallelDepth;
-      }
 
-#pragma omp single
-      {
 #ifndef NDEBUG
         std::cout << "Starting parallel region with " << numThreads
                   << " parallel workers." << std::endl;
