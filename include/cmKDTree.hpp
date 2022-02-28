@@ -25,7 +25,11 @@ int intLog2(int x) {
   return val;
 }
 
-enum struct cmKDTreeDistanceEnum : unsigned { EUCLIDEAN = 0, CUSTOM = 1 };
+enum struct cmKDTreeDistanceEnum : unsigned {
+  MANHATTAN = 0,
+  EUCLIDEAN = 1,
+  CUSTOM = 2
+};
 
 template <class T, int D, class VectorType> class cmKDTree {
 public:
@@ -70,6 +74,8 @@ private:
 
     if (size > 1) {
       SizeType medianIndex = (size + 1) / 2 - 1;
+      // TODO: We could think about adding custom comparison operations, which
+      // would allow for splitting of the data along D arbitrary axes.
       std::nth_element(
           start, start + medianIndex, end,
           [&](VectorType &a, VectorType &b) { return a[axis] < b[axis]; });
@@ -128,6 +134,14 @@ private:
     }
   }
 
+  static T manhattanReducedDistance(const VectorType &a, const VectorType &b) {
+    T sum{0};
+    for (int i = 0; i < D; i++)
+      sum += std::abs(b[i] - a[i]);
+
+    return sum;
+  }
+
   static T euclideanReducedDistance(const VectorType &a, const VectorType &b) {
     T sum{0};
     for (int i = 0; i < D; i++) {
@@ -137,12 +151,18 @@ private:
     return sum;
   }
 
+  static T manhattanDistance(const VectorType &a, const VectorType &b) {
+    return manhattanReducedDistance(a, b);
+  }
+
   static T euclideanDistance(const VectorType &a, const VectorType &b) {
     return std::sqrt(euclideanReducedDistance(a, b));
   }
 
   T distanceReducedInternal(const VectorType &a, const VectorType &b) const {
     switch (distanceType) {
+    case cmKDTreeDistanceEnum::MANHATTAN:
+      return manhattanReducedDistance(a, b);
     case cmKDTreeDistanceEnum::CUSTOM:
       return customReducedDistance(a, b);
       break;
@@ -153,6 +173,8 @@ private:
 
   T distanceInternal(const VectorType &a, const VectorType &b) const {
     switch (distanceType) {
+    case cmKDTreeDistanceEnum::MANHATTAN:
+      return manhattanDistance(a, b);
     case cmKDTreeDistanceEnum::CUSTOM:
       return customDistance(a, b);
     default:
