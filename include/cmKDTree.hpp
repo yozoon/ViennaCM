@@ -15,6 +15,8 @@
 #include <omp.h>
 #endif
 
+#include "cmBoundedPQueue.hpp"
+
 int intLog2(int x) {
   int val = 0;
   while (x >>= 1)
@@ -54,47 +56,6 @@ public:
     Node(VectorType &passedValue, int passedAxis)
         : value(passedValue), axis(passedAxis) {}
   };
-
-  /** For later use with kNN **/
-  // template <class N> struct BoundedMultimap {
-  //   using MapType = std::multimap<T, N>;
-
-  // private:
-  //   MapType mmap;
-
-  // public:
-  //   const SizeType k;
-
-  //   BoundedMultimap(SizeType passedK) : k(passedK) {}
-
-  //   typename MapType::iterator emplace(std::pair<T, N> &&item) {
-  //     auto iterator = mmap.emplace(std::forward(item));
-  //     if (mmap.size() > k)
-  //       mmap.erase(mmap.rbegin());
-
-  //     return iterator;
-  //   }
-
-  //   std::optional<N> getMinItem() {
-  //     auto item = mmap.begin();
-  //     if (item != nullptr) {
-  //       mmap.erase(mmap.begin());
-  //       return {item->second};
-  //     } else {
-  //       return {};
-  //     }
-  //   }
-
-  //   T min() const {
-  //     return mmap.empty() ? std::numeric_limits<T>::max() :
-  //     mmap.begin()->first;
-  //   }
-
-  //   T max() const {
-  //     return mmap.empty() ? std::numeric_limits<T>::max()
-  //                         : mmap.rbegin()->first;
-  //   }
-  // };
 
 private:
   Node *rootNode = nullptr;
@@ -198,27 +159,25 @@ private:
     }
   }
 
-  std::pair<Node *, T> &traverseDown(Node *currentNode,
-                                     std::pair<Node *, T> &best,
-                                     const VectorType &x) const {
+  void traverseDown(Node *currentNode, cmBoundedPQueue<T, Node *> &queue,
+                    const VectorType &x) const {
     if (currentNode == nullptr)
-      return best;
+      return;
 
     int axis = currentNode->axis;
 
     // For distance comparison operations we only use the "reduced" aka less
     // compute intensive, but order preserving version of the distance
     // function.
-    T distance = distanceReducedInternal(x, currentNode->value);
-    if (distance < best.second)
-      best = {currentNode, distance};
+    queue.enqueue(
+        std::pair{distanceReducedInternal(x, currentNode->value), currentNode});
 
     bool isLeft;
     if (x[axis] < currentNode->value[axis]) {
-      best = traverseDown(currentNode->left, best, x);
+      traverseDown(currentNode->left, queue, x);
       isLeft = true;
     } else {
-      best = traverseDown(currentNode->right, best, x);
+      traverseDown(currentNode->right, queue, x);
       isLeft = false;
     }
 
@@ -226,13 +185,14 @@ private:
     // distance intersects the hyperplane defined by the partitioning of the
     // current node, we also have to search the other subtree, since there could
     // be points closer to x than our current best.
-    if (std::abs(x[axis] - currentNode->value[axis]) < best.second) {
+    if (queue.size() < queue.maxSize() ||
+        std::abs(x[axis] - currentNode->value[axis]) < queue.worst()) {
       if (isLeft)
-        best = traverseDown(currentNode->right, best, x);
+        traverseDown(currentNode->right, queue, x);
       else
-        best = traverseDown(currentNode->left, best, x);
+        traverseDown(currentNode->left, queue, x);
     }
-    return best;
+    return;
   }
 
 public:
@@ -310,11 +270,30 @@ public:
     }
   }
 
-  std::pair<VectorType, T> nearest(const VectorType &x) const {
-    auto best = std::pair{rootNode, std::numeric_limits<T>::infinity()};
-    best = traverseDown(rootNode, best, x);
+  std::pair<VectorType, T> findNearest(const VectorType &x) const {
+    auto queue = cmBoundedPQueue<T, Node *>(1);
+    traverseDown(rootNode, queue, x);
+    auto best = queue.dequeueBest();
+    return {best->value, distanceInternal(x, best->value)};
+  }
 
-    return {best.first->value, distanceInternal(x, best.first->value)};
+  lsSmartPointer<std::vector<std::pair<VectorType, T>>>
+  findKNearest(const VectorType &x, int k) const {
+    auto queue = cmBoundedPQueue<T, Node *>(k);
+    traverseDown(rootNode, queue, x);
+
+    auto initial =
+        std::pair<VectorType, T>{{0, 0, 0}, std::numeric_limits<T>::infinity()};
+    auto result = lsSmartPointer<std::vector<std::pair<VectorType, T>>>::New();
+
+    // TODO: handle cases where k might be larger than the number of available
+    // points
+    while (!queue.empty()) {
+      auto best = queue.dequeueBest();
+      result->emplace_back(
+          std::pair{best->value, distanceInternal(x, best->value)});
+    }
+    return result;
   }
 
   ~cmKDTree() { recursiveDelete(rootNode); }

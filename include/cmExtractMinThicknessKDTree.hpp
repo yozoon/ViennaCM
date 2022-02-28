@@ -55,7 +55,7 @@ public:
     const auto &nodes = referenceMesh->nodes;
     dataDestination->reserve(nodes.size());
     for (size_t i = 0; i < nodes.size(); ++i) {
-      auto nearest = kdtree->nearest(nodes[i]);
+      auto nearest = kdtree->findNearest(nodes[i]);
       dataDestination->push_back(nearest.second);
     }
   }

@@ -47,10 +47,11 @@ int main() {
 
   const auto &nodes = depoMesh->nodes;
   for (size_t i = 0; i < depoMesh->nodes.size(); ++i) {
-    auto nearest = kdtree->nearest(nodes[i]);
+    auto nearest = kdtree->findNearest(nodes[i]);
+
     auto id = lut[nearest.first];
 
-    nearestNodeIDs.push_back(lut[nearest.first]);
+    nearestNodeIDs.push_back(id);
   }
 
   baseMesh->getPointData().insertNextScalarData(nodeIDs, "ID");
