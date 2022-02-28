@@ -6,6 +6,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -159,8 +160,8 @@ private:
     }
   }
 
-  void traverseDown(Node *currentNode, cmBoundedPQueue<T, Node *> &queue,
-                    const VectorType &x) const {
+  template <class Q>
+  void traverseDown(Node *currentNode, Q &queue, const VectorType &x) const {
     if (currentNode == nullptr)
       return;
 
@@ -169,8 +170,14 @@ private:
     // For distance comparison operations we only use the "reduced" aka less
     // compute intensive, but order preserving version of the distance
     // function.
-    queue.enqueue(
-        std::pair{distanceReducedInternal(x, currentNode->value), currentNode});
+    if constexpr (std::is_same_v<Q, cmBoundedPQueue<T, Node *>>) {
+      queue.enqueue(std::pair{distanceReducedInternal(x, currentNode->value),
+                              currentNode});
+    } else {
+      T distance = distanceReducedInternal(x, currentNode->value);
+      if (distance < queue.second)
+        queue = std::pair{currentNode, distance};
+    }
 
     bool isLeft;
     if (x[axis] < currentNode->value[axis]) {
@@ -185,12 +192,21 @@ private:
     // distance intersects the hyperplane defined by the partitioning of the
     // current node, we also have to search the other subtree, since there could
     // be points closer to x than our current best.
-    if (queue.size() < queue.maxSize() ||
-        std::abs(x[axis] - currentNode->value[axis]) < queue.worst()) {
-      if (isLeft)
-        traverseDown(currentNode->right, queue, x);
-      else
-        traverseDown(currentNode->left, queue, x);
+    if constexpr (std::is_same_v<Q, cmBoundedPQueue<T, Node *>>) {
+      if (queue.size() < queue.maxSize() ||
+          std::abs(x[axis] - currentNode->value[axis]) < queue.worst()) {
+        if (isLeft)
+          traverseDown(currentNode->right, queue, x);
+        else
+          traverseDown(currentNode->left, queue, x);
+      }
+    } else {
+      if (std::abs(x[axis] - currentNode->value[axis]) < queue.second) {
+        if (isLeft)
+          traverseDown(currentNode->right, queue, x);
+        else
+          traverseDown(currentNode->left, queue, x);
+      }
     }
     return;
   }
@@ -271,10 +287,11 @@ public:
   }
 
   std::pair<VectorType, T> findNearest(const VectorType &x) const {
-    auto queue = cmBoundedPQueue<T, Node *>(1);
-    traverseDown(rootNode, queue, x);
-    auto best = queue.dequeueBest();
-    return {best->value, distanceInternal(x, best->value)};
+    auto best = std::pair{rootNode, std::numeric_limits<T>::infinity()};
+    // auto queue = cmBoundedPQueue<T, Node *>(1);
+    traverseDown(rootNode, best, x);
+    // auto best = queue.dequeueBest();
+    return {best.first->value, distanceInternal(x, best.first->value)};
   }
 
   lsSmartPointer<std::vector<std::pair<VectorType, T>>>
