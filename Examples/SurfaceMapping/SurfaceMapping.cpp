@@ -35,7 +35,8 @@ int main() {
   auto points = lsSmartPointer<decltype(baseMesh->nodes)>::New(baseMesh->nodes);
 
   auto kdtree =
-      lsSmartPointer<cmKDTree<NumericType, D, VectorType>>::New(points);
+      lsSmartPointer<cmKDTree<decltype(baseMesh->nodes)::value_type>>::New(
+          points);
   kdtree->build();
 
   std::vector<hrleCoordType> nearestNodeIDs;
@@ -51,6 +52,6 @@ int main() {
   baseMesh->getPointData().insertNextScalarData(nodeIDs, "ID");
   depoMesh->getPointData().insertNextScalarData(nearestNodeIDs, "nearestNode");
 
-  lsVTKWriter<NumericType>(depoMesh, "mapped_mesh.vtp").apply();
-  lsVTKWriter<NumericType>(baseMesh, "annotated_mesh.vtp").apply();
+  lsVTKWriter<NumericType>(depoMesh, "mapped_mesh.vtk").apply();
+  lsVTKWriter<NumericType>(baseMesh, "annotated_mesh.vtk").apply();
 }

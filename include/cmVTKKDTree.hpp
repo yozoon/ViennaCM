@@ -4,15 +4,24 @@
 #include <limits>
 #include <lsSmartPointer.hpp>
 
+#include <vtkIdList.h>
 #include <vtkKdTree.h>
 #include <vtkNew.h>
 #include <vtkPoints.h>
+#include <vtkSmartPointer.h>
 
-template <class T, int D, class VectorType> class cmVTKKDTree {
+#include "cmPointLocator.hpp"
+
+template <class VectorType> class cmVTKKDTree : cmPointLocator<VectorType> {
+  using typename cmPointLocator<VectorType>::SizeType;
+  using typename cmPointLocator<VectorType>::T;
+  using cmPointLocator<VectorType>::D;
+  using typename cmPointLocator<VectorType>::DistanceFunctionType;
+
 private:
   lsSmartPointer<std::vector<VectorType>> pPoints;
-  vtkNew<vtkPoints> points;
-  vtkNew<vtkKdTree> tree;
+  vtkSmartPointer<vtkPoints> points;
+  vtkSmartPointer<vtkKdTree> tree;
 
 public:
   cmVTKKDTree() {}
@@ -20,11 +29,12 @@ public:
   cmVTKKDTree(lsSmartPointer<std::vector<VectorType>> passedPoints)
       : pPoints(passedPoints) {}
 
-  void build() {
+  void build() override {
     lsMessage::getInstance()
         .addWarning(
             "cmVTKKdTree does not give the right distance for points "
-            "outside of the initial geometries' bounding box at the moment!")
+            "outside of the initial geometries' bounding box at the moment! "
+            "Also findKNearest is not yet properly implemented.")
         .print();
 
     if (pPoints == nullptr) {
@@ -45,13 +55,29 @@ public:
     tree->BuildLocatorFromPoints(points);
   }
 
-  std::pair<VectorType, T> nearest(const VectorType &x) const {
+  std::pair<SizeType, T> findNearest(const VectorType &x) const override {
     double dist;
     double tp[] = {x[0], x[1], x[2]};
     vtkIdType id = tree->FindClosestPoint(tp, dist);
-    points->GetPoint(id, tp);
 
-    return {VectorType{tp[0], tp[1], tp[2]}, dist};
+    return {id, dist};
+  }
+
+  lsSmartPointer<std::vector<std::pair<SizeType, T>>>
+  findKNearest(const VectorType &x, const int k) const override {
+    auto result = lsSmartPointer<std::vector<std::pair<SizeType, T>>>::New();
+    result->reserve(k);
+    double tp[] = {x[0], x[1], x[2]};
+    vtkSmartPointer<vtkIdList> ids;
+    tree->FindClosestNPoints(k, tp, ids);
+
+    // TODO: finish implementation!
+    for (vtkIdType i = 0; i < k; i++) {
+      vtkIdType id = ids->GetId(i);
+      double p[3];
+      points->GetPoint(id, p);
+    }
+    return result;
   }
 };
 

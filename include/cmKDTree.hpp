@@ -18,6 +18,7 @@
 #endif
 
 #include "cmBoundedPQueue.hpp"
+#include "cmPointLocator.hpp"
 
 int intLog2(int x) {
   int val = 0;
@@ -32,12 +33,12 @@ enum struct cmKDTreeDistanceEnum : unsigned {
   CUSTOM = 2
 };
 
-template <class T, int D, class VectorType> class cmKDTree {
-public:
-  using SizeType = std::size_t;
-  using DistanceFunctionType = T (*)(const VectorType &, const VectorType &);
+template <class VectorType> class cmKDTree : cmPointLocator<VectorType> {
+  using typename cmPointLocator<VectorType>::SizeType;
+  using typename cmPointLocator<VectorType>::T;
+  using cmPointLocator<VectorType>::D;
+  using typename cmPointLocator<VectorType>::DistanceFunctionType;
 
-private:
   SizeType N;
   SizeType treeSize = 0;
 
@@ -252,7 +253,7 @@ public:
       : N(passedPoints != nullptr ? passedPoints->size() : 0),
         points(passedPoints) {}
 
-  void build() {
+  void build() override {
     if (points == nullptr) {
       lsMessage::getInstance().addWarning("No points provided!").print();
       return;
@@ -341,7 +342,7 @@ public:
     }
   }
 
-  std::pair<SizeType, T> findNearest(const VectorType &x) const {
+  std::pair<SizeType, T> findNearest(const VectorType &x) const override {
     auto best = std::pair{rootNode, std::numeric_limits<T>::infinity()};
     traverseDown(rootNode, best, x);
     return {best.first->index,
@@ -349,7 +350,7 @@ public:
   }
 
   lsSmartPointer<std::vector<std::pair<SizeType, T>>>
-  findKNearest(const VectorType &x, const int k) const {
+  findKNearest(const VectorType &x, const int k) const override {
     auto queue = cmBoundedPQueue<T, Node *>(k);
     traverseDown(rootNode, queue, x);
 

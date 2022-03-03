@@ -70,9 +70,7 @@ int main(int argc, char *argv[]) {
   std::cout << "CM Tree\nBuilding Tree..." << std::endl;
 
   auto startTime = get_time();
-  auto tree =
-      std::make_shared<cmKDTree<NumericType, D, std::array<NumericType, D>>>(
-          points);
+  auto tree = std::make_shared<cmKDTree<std::array<NumericType, D>>>(points);
   tree->build();
 
   std::cout << "Tree grew in " << get_time() - startTime << "s" << std::endl;
@@ -91,8 +89,7 @@ int main(int argc, char *argv[]) {
   // VTK Tree
   startTime = get_time();
   auto vtkTree =
-      std::make_shared<cmVTKKDTree<NumericType, D, std::array<NumericType, D>>>(
-          points);
+      std::make_shared<cmVTKKDTree<std::array<NumericType, D>>>(points);
   vtkTree->build();
 
   std::cout << "Tree grew in " << get_time() - startTime << "s" << std::endl;
@@ -101,7 +98,7 @@ int main(int argc, char *argv[]) {
   std::cout << "Finding Nearest Neighbors..." << std::endl;
   startTime = get_time();
   for (const auto pt : *testPoints)
-    auto result = vtkTree->nearest(pt);
+    auto result = vtkTree->findNearest(pt);
 
   std::cout << M << " nearest neighbor queries completed in "
             << get_time() - startTime << "s" << std::endl;
