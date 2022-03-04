@@ -29,6 +29,9 @@ public:
   cmVTKKDTree(lsSmartPointer<std::vector<VectorType>> passedPoints)
       : pPoints(passedPoints) {}
 
+  cmVTKKDTree(std::vector<VectorType> &passedPointRef)
+      : points(lsSmartPointer<std::vector<VectorType>>::New(passedPointRef)) {}
+
   void build() override {
     lsMessage::getInstance()
         .addWarning(

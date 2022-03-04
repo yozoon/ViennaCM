@@ -253,6 +253,9 @@ public:
       : N(passedPoints != nullptr ? passedPoints->size() : 0),
         points(passedPoints) {}
 
+  cmKDTree(std::vector<VectorType> &passedPointRef)
+      : points(lsSmartPointer<std::vector<VectorType>>::New(passedPointRef)) {}
+
   void build() override {
     if (points == nullptr) {
       lsMessage::getInstance().addWarning("No points provided!").print();

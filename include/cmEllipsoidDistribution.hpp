@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CM_ELLIPSOID_DISTRIBUTION_HPP
+#define CM_ELLIPSOID_DISTRIBUTION_HPP
 
 #include <algorithm>
 #include <cmath>
@@ -98,3 +99,4 @@ public:
     return bounds;
   }
 };
+#endif

@@ -1,5 +1,5 @@
-#ifndef CM_POINT_LOCATOR
-#define CM_POINT_LOCATOR
+#ifndef CM_POINT_LOCATOR_HPP
+#define CM_POINT_LOCATOR_HPP
 
 #include <tuple>   // std::tuple_size
 #include <utility> // std::pair
@@ -11,7 +11,7 @@ template <class VectorType> struct cmPointLocator {
   using SizeType = std::size_t;
   using T = typename VectorType::value_type;
   using DistanceFunctionType = T (*)(const VectorType &, const VectorType &);
-  
+
   static constexpr int D = std::tuple_size<VectorType>();
 
   cmPointLocator() {}
