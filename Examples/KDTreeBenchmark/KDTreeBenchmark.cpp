@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
   auto testPoints = generatePoints<NumericType, D>(M);
 
   // Custom Tree
-  std::cout << "\nCM KDTree\n========\nBuilding Tree..." << std::endl;
+  std::cout << "\nCM KDTree\n========\nGrowing Tree..." << std::endl;
 
   auto startTime = get_time();
   auto tree =
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
   std::cout << M << " nearest neighbor queries completed in "
             << get_time() - startTime << "s" << std::endl;
 
-  std::cout << "\nVTK KDTree\n========\nBuilding Tree..." << std::endl;
+  std::cout << "\nVTK KDTree\n========\nGrowing Tree..." << std::endl;
 
   // VTK Tree
   startTime = get_time();
