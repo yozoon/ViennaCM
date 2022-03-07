@@ -71,8 +71,8 @@ public:
     Node(Node &&other) {
       value.swap(other.value);
       index = other.index;
-
       axis = other.axis;
+
       left = other.left;
       right = other.right;
 
@@ -83,8 +83,8 @@ public:
     Node &operator=(Node &&other) {
       value.swap(other.value);
       index = other.index;
-
       axis = other.axis;
+
       left = other.left;
       right = other.right;
 
@@ -110,7 +110,7 @@ private:
       SizeType medianIndex = (size + 1) / 2 - 1;
       // TODO: We could think about adding custom comparison operations, which
       // would allow for splitting of the data along D arbitrary axes.
-      std::nth_element(start, start + medianIndex, end, [&](Node &a, Node &b) {
+      std::nth_element(start, start + medianIndex, end, [axis](Node &a, Node &b) {
         return a.value[axis] < b.value[axis];
       });
 
@@ -271,19 +271,6 @@ private:
 public:
   cmKDTree() {}
 
-  cmKDTree(lsSmartPointer<std::vector<VectorType>> passedPoints) {
-    if (passedPoints != nullptr) {
-      nodes.reserve(passedPoints->size());
-      {
-        auto nodeIterator = nodes.begin();
-        for (SizeType i = 0; i < passedPoints->size(); i++) {
-          nodes.emplace(nodeIterator, Node{(*passedPoints)[i], i});
-          nodeIterator++;
-        }
-      }
-    }
-  }
-
   cmKDTree(std::vector<VectorType> &passedPoints) {
     nodes.reserve(passedPoints.size());
     {
@@ -328,9 +315,10 @@ public:
 
         std::nth_element(
             nodes.begin(), nodes.begin() + medianIndex, nodes.end(),
-            [&](Node &a, Node &b) { return a.value[0] < b.value[0]; });
+            [](Node &a, Node &b) { return a.value[0] < b.value[0]; });
 
         rootNode = &nodes[medianIndex];
+        rootNode->axis = 0;
 
 #ifdef _OPENMP
         bool dontSpawnMoreThreads = 0 > maxParallelDepth + 1 ||
@@ -369,6 +357,8 @@ public:
   std::pair<SizeType, T> findNearest(const VectorType &x) const override {
     auto best = std::pair{rootNode, std::numeric_limits<T>::infinity()};
     traverseDown(rootNode, best, x);
+    if (best.first == nullptr)
+      std::cout << "whyyy" << std::endl;
     return {best.first->index, distanceInternal(x, best.first->value)};
   }
 

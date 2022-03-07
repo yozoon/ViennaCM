@@ -54,10 +54,7 @@ public:
     if (dataDestination->size() != 0)
       dataDestination->clear();
 
-    auto points =
-        lsSmartPointer<decltype(advectedMesh->nodes)>::New(advectedMesh->nodes);
-
-    auto kdtree = lsSmartPointer<LocatorType>::New(points);
+    auto kdtree = lsSmartPointer<LocatorType>::New(advectedMesh->nodes);
 
     kdtree->build();
 

@@ -6,7 +6,6 @@
 #include <lsVTKWriter.hpp>
 
 #include "cmKDTree.hpp"
-#include "cmVectorHash.hpp"
 
 int main() {
   constexpr int D = 2;
@@ -39,7 +38,7 @@ int main() {
   nearestNodeIDs.reserve(depoMesh->nodes.size());
 
   const auto &nodes = depoMesh->nodes;
-  for (size_t i = 0; i < depoMesh->nodes.size(); ++i) {
+  for (size_t i = 0; i < nodes.size(); ++i) {
     auto nearest = kdtree->findNearest(nodes[i]);
     nearestNodeIDs.push_back(nearest.first);
   }
