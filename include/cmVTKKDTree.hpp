@@ -45,7 +45,13 @@ public:
       return;
     }
 
-    if (points->GetNumberOfPoints() == 0)
+    if (points == nullptr)
+      points = vtkNew<vtkPoints>();
+
+    if (tree == nullptr)
+      tree = vtkNew<vtkKdTree>();
+
+    if (points->GetNumberOfPoints() != 0)
       points->Reset();
 
     for (const auto &pt : *pPoints) {

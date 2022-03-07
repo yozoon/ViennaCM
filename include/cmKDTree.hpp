@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <optional>
@@ -33,6 +34,11 @@ enum struct cmKDTreeDistanceEnum : unsigned {
   CUSTOM = 2
 };
 
+template <class Iterator>
+typename Iterator::pointer toRawPointer(const Iterator it) {
+  return &(*it);
+}
+
 template <class VectorType> class cmKDTree : cmPointLocator<VectorType> {
   using typename cmPointLocator<VectorType>::SizeType;
   using typename cmPointLocator<VectorType>::T;
@@ -46,31 +52,56 @@ template <class VectorType> class cmKDTree : cmPointLocator<VectorType> {
   int maxParallelDepth = 0;
   int surplusWorkers = 0;
 
-  lsSmartPointer<std::vector<VectorType>> points = nullptr;
-  lsSmartPointer<std::vector<SizeType>> pointIndices = nullptr;
-
   cmKDTreeDistanceEnum distanceType = cmKDTreeDistanceEnum::EUCLIDEAN;
   DistanceFunctionType customDistance = nullptr;
   DistanceFunctionType customReducedDistance = nullptr;
 
 public:
   struct Node {
-    SizeType &index;
+    VectorType value;
+    SizeType index;
     int axis;
 
     Node *left = nullptr;
     Node *right = nullptr;
 
-    Node(SizeType &passedIndex, int passedAxis)
-        : index(passedIndex), axis(passedAxis) {}
+    Node(VectorType &passedValue, SizeType passedIndex)
+        : value(passedValue), index(passedIndex) {}
+
+    Node(Node &&other) {
+      value.swap(other.value);
+      index = other.index;
+
+      axis = other.axis;
+      left = other.left;
+      right = other.right;
+
+      other.left = nullptr;
+      other.right = nullptr;
+    }
+
+    Node &operator=(Node &&other) {
+      value.swap(other.value);
+      index = other.index;
+
+      axis = other.axis;
+      left = other.left;
+      right = other.right;
+
+      other.left = nullptr;
+      other.right = nullptr;
+
+      return *this;
+    }
   };
 
 private:
+  std::vector<Node> nodes;
   Node *rootNode = nullptr;
 
-  void build(Node *parent, typename std::vector<SizeType>::iterator start,
-             typename std::vector<SizeType>::iterator end, int depth,
-             bool isLeft) {
+  void build(Node *parent, typename std::vector<Node>::iterator start,
+             typename std::vector<Node>::iterator end, int depth,
+             bool isLeft) const {
     SizeType size = end - start;
 
     int axis = depth % D;
@@ -79,12 +110,12 @@ private:
       SizeType medianIndex = (size + 1) / 2 - 1;
       // TODO: We could think about adding custom comparison operations, which
       // would allow for splitting of the data along D arbitrary axes.
-      std::nth_element(start, start + medianIndex, end,
-                       [&](SizeType &a, SizeType &b) {
-                         return (*points)[a][axis] < (*points)[b][axis];
-                       });
+      std::nth_element(start, start + medianIndex, end, [&](Node &a, Node &b) {
+        return a.value[axis] < b.value[axis];
+      });
 
-      Node *current = new Node(*(start + medianIndex), axis);
+      Node *current = toRawPointer(start + medianIndex);
+      current->axis = axis;
 
       if (isLeft)
         parent->left = current;
@@ -100,8 +131,8 @@ private:
       {
 #ifdef _OPENMP
 #ifndef NDEBUG
-        std::cout << "Task assigned to thread " << omp_get_thread_num()
-                  << std::endl;
+        // std::cout << "Task assigned to thread " << omp_get_thread_num()
+        //           << std::endl;
 #endif
 #endif
         // Left Subtree
@@ -122,19 +153,13 @@ private:
       );
 #pragma omp taskwait
     } else if (size == 1) {
+      Node *current = toRawPointer(start);
+      current->axis = axis;
       // Leaf Node
       if (isLeft)
-        parent->left = new Node(*start, axis);
+        parent->left = current;
       else
-        parent->right = new Node(*start, axis);
-    }
-  }
-
-  void recursiveDelete(Node *node) {
-    if (node != nullptr) {
-      recursiveDelete(node->left);
-      recursiveDelete(node->right);
-      delete node;
+        parent->right = current;
     }
   }
 
@@ -203,17 +228,16 @@ private:
     // compute intensive, but order preserving version of the distance
     // function.
     if constexpr (std::is_same_v<Q, cmBoundedPQueue<T, Node *>>) {
-      queue.enqueue(
-          std::pair{distanceReducedInternal(x, (*points)[currentNode->index]),
-                    currentNode});
+      queue.enqueue(std::pair{distanceReducedInternal(x, currentNode->value),
+                              currentNode});
     } else {
-      T distance = distanceReducedInternal(x, (*points)[currentNode->index]);
+      T distance = distanceReducedInternal(x, currentNode->value);
       if (distance < queue.second)
         queue = std::pair{currentNode, distance};
     }
 
     bool isLeft;
-    if (x[axis] < (*points)[currentNode->index][axis]) {
+    if (x[axis] < currentNode->value[axis]) {
       traverseDown(currentNode->left, queue, x);
       isLeft = true;
     } else {
@@ -227,16 +251,14 @@ private:
     // be points closer to x than our current best.
     if constexpr (std::is_same_v<Q, cmBoundedPQueue<T, Node *>>) {
       if (queue.size() < queue.maxSize() ||
-          std::abs(x[axis] - (*points)[currentNode->index][axis]) <
-              queue.worst()) {
+          std::abs(x[axis] - currentNode->value[axis]) < queue.worst()) {
         if (isLeft)
           traverseDown(currentNode->right, queue, x);
         else
           traverseDown(currentNode->left, queue, x);
       }
     } else {
-      if (std::abs(x[axis] - (*points)[currentNode->index][axis]) <
-          queue.second) {
+      if (std::abs(x[axis] - currentNode->value[axis]) < queue.second) {
         if (isLeft)
           traverseDown(currentNode->right, queue, x);
         else
@@ -249,41 +271,42 @@ private:
 public:
   cmKDTree() {}
 
-  cmKDTree(lsSmartPointer<std::vector<VectorType>> passedPoints)
-      : N(passedPoints != nullptr ? passedPoints->size() : 0),
-        points(passedPoints) {}
+  cmKDTree(lsSmartPointer<std::vector<VectorType>> passedPoints) {
+    if (passedPoints != nullptr) {
+      nodes.reserve(passedPoints->size());
+      {
+        auto nodeIterator = nodes.begin();
+        for (SizeType i = 0; i < passedPoints->size(); i++) {
+          nodes.emplace(nodeIterator, Node{(*passedPoints)[i], i});
+          nodeIterator++;
+        }
+      }
+    }
+  }
 
-  cmKDTree(std::vector<VectorType> &passedPointRef)
-      : points(lsSmartPointer<std::vector<VectorType>>::New(passedPointRef)) {}
+  cmKDTree(std::vector<VectorType> &passedPoints) {
+    nodes.reserve(passedPoints.size());
+    {
+      auto nodeIterator = nodes.begin();
+      for (SizeType i = 0; i < passedPoints.size(); i++) {
+        nodes.emplace(nodeIterator, Node{passedPoints[i], i});
+        nodeIterator++;
+      }
+    }
+  }
 
   void build() override {
-    if (points == nullptr) {
+    if (nodes.size() == 0) {
       lsMessage::getInstance().addWarning("No points provided!").print();
       return;
     }
 
-    if (rootNode != nullptr)
-      recursiveDelete(rootNode);
-
-    // Initialize the point index vector
-    pointIndices = lsSmartPointer<std::vector<SizeType>>::New();
-    pointIndices->reserve(points->size());
-    // Create a new vector containing the point indices. This is the one we
-    // will
-    // modify with the sort operations later on. This ensures that the passed
-    // points won't be reordered.
-    // TODO: This can be parallelized!
-    {
-      auto pointIterator = pointIndices->begin();
-      for (SizeType i = 0; i < points->size(); i++) {
-        pointIndices->emplace(pointIterator, i);
-        pointIterator++;
-      }
-    }
+    // if (rootNode != nullptr)
+    //   recursiveDelete(rootNode);
 
 #pragma omp parallel default(none)                                             \
     shared(numThreads, maxParallelDepth, surplusWorkers, std::cout, rootNode,  \
-           treeSize, points, pointIndices)
+           treeSize, nodes)
     {
       int threadID = 0;
 #pragma omp single
@@ -296,20 +319,18 @@ public:
         surplusWorkers = numThreads - 1 << maxParallelDepth;
 
 #ifndef NDEBUG
-        std::cout << "Starting parallel region with " << numThreads
-                  << " parallel workers." << std::endl;
+        // std::cout << "Starting parallel region with " << numThreads
+        //           << " parallel workers." << std::endl;
 #endif
 
-        SizeType size = pointIndices->end() - pointIndices->begin();
+        SizeType size = nodes.end() - nodes.begin();
         SizeType medianIndex = (size + 1) / 2 - 1;
 
-        std::nth_element(pointIndices->begin(),
-                         pointIndices->begin() + medianIndex,
-                         pointIndices->end(), [&](SizeType &a, SizeType &b) {
-                           return (*points)[a][0] < (*points)[b][0];
-                         });
+        std::nth_element(
+            nodes.begin(), nodes.begin() + medianIndex, nodes.end(),
+            [&](Node &a, Node &b) { return a.value[0] < b.value[0]; });
 
-        rootNode = new Node(*(pointIndices->begin() + medianIndex), 0);
+        rootNode = &nodes[medianIndex];
 
 #ifdef _OPENMP
         bool dontSpawnMoreThreads = 0 > maxParallelDepth + 1 ||
@@ -320,25 +341,25 @@ public:
         {
 #ifdef _OPENMP
 #ifndef NDEBUG
-          std::cout << "Task assigned to thread " << omp_get_thread_num()
-                    << std::endl;
+          // std::cout << "Task assigned to thread " << omp_get_thread_num()
+          //           << std::endl;
 #endif
 #endif
           // Left Subtree
-          build(rootNode,                            // Use rootNode as parent
-                pointIndices->begin(),               // Data start
-                pointIndices->begin() + medianIndex, // Data end
-                1,                                   // Depth
-                true                                 // Left
+          build(rootNode,                    // Use rootNode as parent
+                nodes.begin(),               // Data start
+                nodes.begin() + medianIndex, // Data end
+                1,                           // Depth
+                true                         // Left
           );
         }
 
         // Right Subtree
-        build(rootNode,                                // Use rootNode as parent
-              pointIndices->begin() + medianIndex + 1, // Data start
-              pointIndices->end(),                     // Data end
-              1,                                       // Depth
-              false                                    // Right
+        build(rootNode,                        // Use rootNode as parent
+              nodes.begin() + medianIndex + 1, // Data start
+              nodes.end(),                     // Data end
+              1,                               // Depth
+              false                            // Right
         );
 #pragma omp taskwait
       }
@@ -348,8 +369,7 @@ public:
   std::pair<SizeType, T> findNearest(const VectorType &x) const override {
     auto best = std::pair{rootNode, std::numeric_limits<T>::infinity()};
     traverseDown(rootNode, best, x);
-    return {best.first->index,
-            distanceInternal(x, (*points)[best.first->index])};
+    return {best.first->index, distanceInternal(x, best.first->value)};
   }
 
   lsSmartPointer<std::vector<std::pair<SizeType, T>>>
@@ -366,12 +386,10 @@ public:
     while (!queue.empty()) {
       auto best = queue.dequeueBest();
       result->emplace_back(
-          std::pair{best->index, distanceInternal(x, (*points)[best->index])});
+          std::pair{best->index, distanceInternal(x, best->value)});
     }
     return result;
   }
-
-  ~cmKDTree() { recursiveDelete(rootNode); }
 };
 
 #endif
