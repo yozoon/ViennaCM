@@ -19,13 +19,11 @@ int main() {
   auto depoMesh = lsSmartPointer<lsMesh<>>::New();
   lsVTKReader<NumericType>(depoMesh, "second.vtk").apply();
 
-  auto points = lsSmartPointer<decltype(baseMesh->nodes)>::New(baseMesh->nodes);
-
   auto thickness = lsSmartPointer<std::vector<NumericType>>::New();
 
-  cmExtractClosestPointThickness<
-      typename decltype(baseMesh->nodes)::value_type>(baseMesh, depoMesh,
-                                                      thickness)
+  using VectorType = typename decltype(baseMesh->nodes)::value_type;
+  cmExtractClosestPointThickness<VectorType, cmKDTree<VectorType>>(
+      baseMesh, depoMesh, thickness)
       .apply();
 
   baseMesh->getPointData().insertNextScalarData(*thickness, "thickness");
