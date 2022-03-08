@@ -3,16 +3,16 @@
 #include <random>
 #include <vector>
 
-#include <lsSmartPointer.hpp>
-
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
+#include <lsSmartPointer.hpp>
+
 #include "cmKDTree.hpp"
 #include "cmVTKKDTree.hpp"
 
-inline double get_time() {
+inline double getTime() {
 #ifdef _OPENMP
   return omp_get_wtime();
 #else
@@ -24,23 +24,31 @@ inline double get_time() {
 
 template <class T, int D>
 lsSmartPointer<std::vector<std::array<T, D>>> generatePoints(int N) {
-  auto data = lsSmartPointer<std::vector<std::array<T, D>>>::New();
-  data->reserve(N);
-  std::random_device rd{};
-  std::mt19937 gen{rd()};
 
-  std::normal_distribution<> d{0, 10};
-  auto it = data->begin();
-  for (int i = 0; i < N; ++i) {
-    data->emplace(it, std::array<T, D>{d(gen), d(gen), d(gen)});
-    ++it;
+  std::random_device rd;
+  auto data = lsSmartPointer<std::vector<std::array<T, D>>>::New(N);
+
+#pragma omp parallel default(none) shared(N, data, rd)
+  {
+    int numThreads = 1;
+#ifdef _OPENMP
+    numThreads = omp_get_num_threads();
+#endif
+
+    auto engine = std::default_random_engine(rd());
+    std::uniform_real_distribution<> d{10, 10};
+#pragma omp for
+    for (int i = 0; i < N; ++i) {
+      (*data)[i] = std::array<T, D>{d(engine), d(engine), d(engine)};
+    }
   }
+
   return data;
 }
 
 int main(int argc, char *argv[]) {
   using NumericType = double;
-  constexpr int D = 3;
+  static constexpr int D = 3;
 
   // The number of points in the tree
   int N = 1'000'000;
@@ -66,41 +74,47 @@ int main(int argc, char *argv[]) {
   std::cout << "Generating Testing Points..." << std::endl;
   auto testPoints = generatePoints<NumericType, D>(M);
 
-  // Custom Tree
-  std::cout << "\nCM KDTree\n========\nGrowing Tree..." << std::endl;
+  {
+    // Custom Tree
+    std::cout << "\nCM KDTree\n========\nGrowing Tree..." << std::endl;
 
-  auto startTime = get_time();
-  auto tree =
-      lsSmartPointer<cmKDTree<std::array<NumericType, D>>>::New(*points);
-  tree->build();
+    auto startTime = getTime();
+    auto tree =
+        lsSmartPointer<cmKDTree<std::array<NumericType, D>>>::New(*points);
+    tree->build();
+    auto endTime = getTime();
 
-  std::cout << "Tree grew in " << get_time() - startTime << "s" << std::endl;
+    std::cout << "Tree grew in " << endTime - startTime << "s" << std::endl;
 
-  // Nearest Neighbors
-  std::cout << "Finding Nearest Neighbors..." << std::endl;
-  startTime = get_time();
-  for (const auto pt : *testPoints)
-    auto result = tree->findNearest(pt);
+    // Nearest Neighbors
+    std::cout << "Finding Nearest Neighbors..." << std::endl;
+    startTime = getTime();
+    for (const auto pt : *testPoints)
+      auto result = tree->findNearest(pt);
 
-  std::cout << M << " nearest neighbor queries completed in "
-            << get_time() - startTime << "s" << std::endl;
+    std::cout << M << " nearest neighbor queries completed in "
+              << getTime() - startTime << "s" << std::endl;
+  }
+  {
+    std::cout << "\nVTK KDTree\n========\nGrowing Tree..." << std::endl;
 
-  std::cout << "\nVTK KDTree\n========\nGrowing Tree..." << std::endl;
+    // VTK Tree
+    auto startTime = getTime();
+    auto vtkTree =
+        lsSmartPointer<cmVTKKDTree<std::array<NumericType, D>>>::New(*points);
+    vtkTree->build();
+    auto endTime = getTime();
 
-  // VTK Tree
-  startTime = get_time();
-  auto vtkTree =
-      lsSmartPointer<cmVTKKDTree<std::array<NumericType, D>>>::New(*points);
-  vtkTree->build();
+    std::cout << "Tree grew in " << endTime - startTime << "s" << std::endl;
 
-  std::cout << "Tree grew in " << get_time() - startTime << "s" << std::endl;
+    // Nearest Neighbors with VTK Tree
+    std::cout << "Finding Nearest Neighbors..." << std::endl;
+    startTime = getTime();
+    for (const auto pt : *testPoints)
+      auto result = vtkTree->findNearest(pt);
 
-  // Nearest Neighbors with VTK Tree
-  std::cout << "Finding Nearest Neighbors..." << std::endl;
-  startTime = get_time();
-  for (const auto pt : *testPoints)
-    auto result = vtkTree->findNearest(pt);
-
-  std::cout << M << " nearest neighbor queries completed in "
-            << get_time() - startTime << "s" << std::endl;
+    endTime = getTime();
+    std::cout << M << " nearest neighbor queries completed in "
+              << endTime - startTime << "s" << std::endl;
+  }
 }
