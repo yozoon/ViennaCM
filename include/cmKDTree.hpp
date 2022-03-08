@@ -1,6 +1,33 @@
 #ifndef CM_KDTREE_HPP
 #define CM_KDTREE_HPP
 
+// Inspired by the implementation of a parallelized kD-Tree by Francesco
+// Andreuzzi (https://github.com/fAndreuzzi/parallel-kd-tree)
+//
+// --------------------- BEGIN ORIGINAL COPYRIGHT NOTICE ---------------------//
+// MIT License
+//
+// Copyright (c) 2021 Francesco Andreuzzi
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+// ---------------------- END ORIGINAL COPYRIGHT NOTICE ----------------------//
+
 #include <algorithm>
 #include <array>
 #include <iterator>
@@ -110,9 +137,9 @@ private:
       SizeType medianIndex = (size + 1) / 2 - 1;
       // TODO: We could think about adding custom comparison operations, which
       // would allow for splitting of the data along D arbitrary axes.
-      std::nth_element(start, start + medianIndex, end, [axis](Node &a, Node &b) {
-        return a.value[axis] < b.value[axis];
-      });
+      std::nth_element(
+          start, start + medianIndex, end,
+          [axis](Node &a, Node &b) { return a.value[axis] < b.value[axis]; });
 
       Node *current = toRawPointer(start + medianIndex);
       current->axis = axis;
@@ -129,12 +156,6 @@ private:
 #endif
 #pragma omp task final(dontSpawnMoreThreads)
       {
-#ifdef _OPENMP
-#ifndef NDEBUG
-        // std::cout << "Task assigned to thread " << omp_get_thread_num()
-        //           << std::endl;
-#endif
-#endif
         // Left Subtree
         build(current,             // Use current node as parent
               start,               // Data start
@@ -168,7 +189,7 @@ private:
    ****************************************************************************/
   static T manhattanReducedDistance(const VectorType &a, const VectorType &b) {
     T sum{0};
-    for (int i = 0; i < D; i++)
+    for (int i = 0; i < D; ++i)
       sum += std::abs(b[i] - a[i]);
 
     return sum;
@@ -176,7 +197,7 @@ private:
 
   static T euclideanReducedDistance(const VectorType &a, const VectorType &b) {
     T sum{0};
-    for (int i = 0; i < D; i++) {
+    for (int i = 0; i < D; ++i) {
       T d = b[i] - a[i];
       sum += d * d;
     }
@@ -275,9 +296,9 @@ public:
     nodes.reserve(passedPoints.size());
     {
       auto nodeIterator = nodes.begin();
-      for (SizeType i = 0; i < passedPoints.size(); i++) {
+      for (SizeType i = 0; i < passedPoints.size(); ++i) {
         nodes.emplace(nodeIterator, Node{passedPoints[i], i});
-        nodeIterator++;
+        ++nodeIterator;
       }
     }
   }
@@ -287,9 +308,6 @@ public:
       lsMessage::getInstance().addWarning("No points provided!").print();
       return;
     }
-
-    // if (rootNode != nullptr)
-    //   recursiveDelete(rootNode);
 
 #pragma omp parallel default(none)                                             \
     shared(numThreads, maxParallelDepth, surplusWorkers, std::cout, rootNode,  \
@@ -304,11 +322,6 @@ public:
 #endif
         maxParallelDepth = intLog2(numThreads);
         surplusWorkers = numThreads - 1 << maxParallelDepth;
-
-#ifndef NDEBUG
-        // std::cout << "Starting parallel region with " << numThreads
-        //           << " parallel workers." << std::endl;
-#endif
 
         SizeType size = nodes.end() - nodes.begin();
         SizeType medianIndex = (size + 1) / 2 - 1;
@@ -327,12 +340,6 @@ public:
 #endif
 #pragma omp task final(dontSpawnMoreThreads)
         {
-#ifdef _OPENMP
-#ifndef NDEBUG
-          // std::cout << "Task assigned to thread " << omp_get_thread_num()
-          //           << std::endl;
-#endif
-#endif
           // Left Subtree
           build(rootNode,                    // Use rootNode as parent
                 nodes.begin(),               // Data start
@@ -357,8 +364,6 @@ public:
   std::pair<SizeType, T> findNearest(const VectorType &x) const override {
     auto best = std::pair{rootNode, std::numeric_limits<T>::infinity()};
     traverseDown(rootNode, best, x);
-    if (best.first == nullptr)
-      std::cout << "whyyy" << std::endl;
     return {best.first->index, distanceInternal(x, best.first->value)};
   }
 

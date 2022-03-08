@@ -31,9 +31,9 @@ lsSmartPointer<std::vector<std::array<T, D>>> generatePoints(int N) {
 
   std::normal_distribution<> d{0, 10};
   auto it = data->begin();
-  for (int i = 0; i < N; i++) {
+  for (int i = 0; i < N; ++i) {
     data->emplace(it, std::array<T, D>{d(gen), d(gen), d(gen)});
-    it++;
+    ++it;
   }
   return data;
 }

@@ -24,7 +24,7 @@ private:
 
   static T distance(const VectorType &a, const VectorType &b) {
     T sum{0};
-    for (int i = 0; i < D; i++) {
+    for (int i = 0; i < D; ++i) {
       T d = b[i] - a[i];
       sum += d * d;
     }
@@ -74,7 +74,7 @@ public:
     vtkNew<vtkIdList> ids;
     tree->FindClosestNPoints(k, tp, ids);
 
-    for (vtkIdType i = 0; i < k; i++) {
+    for (vtkIdType i = 0; i < k; ++i) {
       vtkIdType id = ids->GetId(i);
       double p[3];
       points->GetPoint(id, p);
