@@ -68,6 +68,14 @@ int main(int argc, char *argv[]) {
       M = tmp;
   }
 
+  // The number repetitions
+  int repetitions = 1;
+  if (argc > 3) {
+    int tmp = std::atoi(argv[3]);
+    if (tmp > 0)
+      repetitions = tmp;
+  }
+
   // Training Point generation
   std::cout << "Generating Training Points..." << std::endl;
   auto points = generatePoints<NumericType, D>(N);
@@ -79,44 +87,57 @@ int main(int argc, char *argv[]) {
   {
     // Custom Tree
     std::cout << "\nCM KDTree\n========\nGrowing Tree..." << std::endl;
-
+    double totalTime{0.};
+    lsSmartPointer<cmKDTree<std::array<NumericType, D>>> tree = nullptr;
     auto startTime = getTime();
-    auto tree =
-        lsSmartPointer<cmKDTree<std::array<NumericType, D>>>::New(points);
-    tree->build();
+    for (unsigned i = 0; i < repetitions; ++i) {
+      tree = lsSmartPointer<cmKDTree<std::array<NumericType, D>>>::New(points);
+      tree->build();
+    }
     auto endTime = getTime();
+    std::cout << "Tree grew in " << (endTime - startTime) / repetitions << "s"
+              << std::endl;
 
-    std::cout << "Tree grew in " << endTime - startTime << "s" << std::endl;
-
+    totalTime = 0.;
     // Nearest Neighbors
     std::cout << "Finding Nearest Neighbors..." << std::endl;
     startTime = getTime();
-    for (const auto pt : testPoints)
-      auto result = tree->findNearest(pt);
+    for (unsigned i = 0; i < repetitions; ++i) {
+      for (const auto pt : testPoints)
+        auto result = tree->findNearest(pt);
+    }
+    endTime = getTime();
 
     std::cout << M << " nearest neighbor queries completed in "
-              << getTime() - startTime << "s" << std::endl;
+              << (endTime - startTime) / repetitions << "s" << std::endl;
   }
   {
     std::cout << "\nVTK KDTree\n========\nGrowing Tree..." << std::endl;
 
+    lsSmartPointer<cmVTKKDTree<std::array<NumericType, D>>> vtkTree = nullptr;
     // VTK Tree
     auto startTime = getTime();
-    auto vtkTree =
-        lsSmartPointer<cmVTKKDTree<std::array<NumericType, D>>>::New(points);
-    vtkTree->build();
+    for (unsigned i = 0; i < repetitions; ++i) {
+      vtkTree =
+          lsSmartPointer<cmVTKKDTree<std::array<NumericType, D>>>::New(points);
+      vtkTree->build();
+    }
     auto endTime = getTime();
 
-    std::cout << "Tree grew in " << endTime - startTime << "s" << std::endl;
+    std::cout << "Tree grew in " << (endTime - startTime) / repetitions << "s"
+              << std::endl;
 
     // Nearest Neighbors with VTK Tree
     std::cout << "Finding Nearest Neighbors..." << std::endl;
     startTime = getTime();
-    for (const auto pt : testPoints)
-      auto result = vtkTree->findNearest(pt);
+    for (unsigned i = 0; i < repetitions; ++i) {
+
+      for (const auto pt : testPoints)
+        auto result = vtkTree->findNearest(pt);
+    }
 
     endTime = getTime();
     std::cout << M << " nearest neighbor queries completed in "
-              << endTime - startTime << "s" << std::endl;
+              << (endTime - startTime) / repetitions << "s" << std::endl;
   }
 }
