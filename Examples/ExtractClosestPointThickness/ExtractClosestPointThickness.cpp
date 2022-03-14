@@ -1,8 +1,8 @@
 #include <vector>
 
-#include <lsFromSurfaceMesh.hpp>
-#include <lsMesh.hpp>
-#include <lsVTKReader.hpp>
+#include <lsDomain.hpp>
+#include <lsReader.hpp>
+#include <lsToDiskMesh.hpp>
 #include <lsVTKWriter.hpp>
 
 #include "cmExtractClosestPointThickness.hpp"
@@ -12,21 +12,28 @@ int main() {
   constexpr int D = 2;
   using NumericType = double;
 
-  // Load both meshes
-  auto baseMesh = lsSmartPointer<lsMesh<>>::New();
-  lsVTKReader<NumericType>(baseMesh, "first.vtk").apply();
+  auto baseLayer = lsSmartPointer<lsDomain<NumericType, D>>::New();
+  lsReader<NumericType, D>(baseLayer, "first.lvst").apply();
 
-  auto depoMesh = lsSmartPointer<lsMesh<>>::New();
-  lsVTKReader<NumericType>(depoMesh, "second.vtk").apply();
+  auto depoLayer = lsSmartPointer<lsDomain<NumericType, D>>::New();
+  lsReader<NumericType, D>(depoLayer, "second.lvst").apply();
+
+  auto baseMesh = lsSmartPointer<lsMesh<NumericType>>::New();
+  lsToDiskMesh<NumericType, D>(baseLayer, baseMesh).apply();
+
+  auto depoMesh = lsSmartPointer<lsMesh<NumericType>>::New();
+  lsToDiskMesh<NumericType, D>(depoLayer, depoMesh).apply();
 
   auto thickness = lsSmartPointer<std::vector<NumericType>>::New();
 
   using VectorType = typename decltype(baseMesh->nodes)::value_type;
+
   cmExtractClosestPointThickness<VectorType, cmKDTree<VectorType>>(
       baseMesh, depoMesh, thickness)
       .apply();
 
   baseMesh->getPointData().insertNextScalarData(*thickness, "thickness");
 
-  lsVTKWriter<NumericType>(baseMesh, "layer_thickness.vtk").apply();
+  lsVTKWriter<NumericType>(baseMesh, "first.vtk").apply();
+  lsVTKWriter<NumericType>(depoMesh, "second.vtk").apply();
 }
