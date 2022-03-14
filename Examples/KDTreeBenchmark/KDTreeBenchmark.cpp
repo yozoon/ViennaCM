@@ -22,11 +22,9 @@ inline double getTime() {
 #endif
 }
 
-template <class T, int D>
-lsSmartPointer<std::vector<std::array<T, D>>> generatePoints(int N) {
-
+template <class T, int D> std::vector<std::array<T, D>> generatePoints(int N) {
   std::random_device rd;
-  auto data = lsSmartPointer<std::vector<std::array<T, D>>>::New(N);
+  std::vector<std::array<T, D>> data(N);
 
 #pragma omp parallel default(none) shared(N, data, rd)
   {
@@ -36,10 +34,14 @@ lsSmartPointer<std::vector<std::array<T, D>>> generatePoints(int N) {
 #endif
 
     auto engine = std::default_random_engine(rd());
-    std::uniform_real_distribution<> d{10, 10};
+    std::normal_distribution<> d{0, 10};
 #pragma omp for
     for (int i = 0; i < N; ++i) {
-      (*data)[i] = std::array<T, D>{d(engine), d(engine), d(engine)};
+      if constexpr (D == 3) {
+        data[i] = std::array<T, D>{d(engine), d(engine), d(engine)};
+      } else {
+        data[i] = std::array<T, D>{d(engine), d(engine)};
+      }
     }
   }
 
@@ -80,7 +82,7 @@ int main(int argc, char *argv[]) {
 
     auto startTime = getTime();
     auto tree =
-        lsSmartPointer<cmKDTree<std::array<NumericType, D>>>::New(*points);
+        lsSmartPointer<cmKDTree<std::array<NumericType, D>>>::New(points);
     tree->build();
     auto endTime = getTime();
 
@@ -89,7 +91,7 @@ int main(int argc, char *argv[]) {
     // Nearest Neighbors
     std::cout << "Finding Nearest Neighbors..." << std::endl;
     startTime = getTime();
-    for (const auto pt : *testPoints)
+    for (const auto pt : testPoints)
       auto result = tree->findNearest(pt);
 
     std::cout << M << " nearest neighbor queries completed in "
@@ -101,7 +103,7 @@ int main(int argc, char *argv[]) {
     // VTK Tree
     auto startTime = getTime();
     auto vtkTree =
-        lsSmartPointer<cmVTKKDTree<std::array<NumericType, D>>>::New(*points);
+        lsSmartPointer<cmVTKKDTree<std::array<NumericType, D>>>::New(points);
     vtkTree->build();
     auto endTime = getTime();
 
@@ -110,7 +112,7 @@ int main(int argc, char *argv[]) {
     // Nearest Neighbors with VTK Tree
     std::cout << "Finding Nearest Neighbors..." << std::endl;
     startTime = getTime();
-    for (const auto pt : *testPoints)
+    for (const auto pt : testPoints)
       auto result = vtkTree->findNearest(pt);
 
     endTime = getTime();

@@ -295,10 +295,8 @@ public:
   cmKDTree(std::vector<VectorType> &passedPoints) {
     nodes.reserve(passedPoints.size());
     {
-      auto nodeIterator = nodes.begin();
       for (SizeType i = 0; i < passedPoints.size(); ++i) {
-        nodes.emplace(nodeIterator, Node{passedPoints[i], i});
-        ++nodeIterator;
+        nodes.emplace_back(Node{passedPoints[i], i});
       }
     }
   }

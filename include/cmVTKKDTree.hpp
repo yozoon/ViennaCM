@@ -19,8 +19,8 @@ template <class VectorType> class cmVTKKDTree : cmPointLocator<VectorType> {
   using typename cmPointLocator<VectorType>::DistanceFunctionType;
 
 private:
-  vtkSmartPointer<vtkPoints> points = vtkNew<vtkPoints>();
-  vtkSmartPointer<vtkKdTree> tree = vtkNew<vtkKdTree>();
+  vtkSmartPointer<vtkPoints> points = nullptr;
+  vtkSmartPointer<vtkKdTree> tree = nullptr;
 
   static T distance(const VectorType &a, const VectorType &b) {
     T sum{0};
@@ -35,8 +35,12 @@ public:
   cmVTKKDTree() {}
 
   cmVTKKDTree(std::vector<VectorType> &passedPoints) {
-    for (const auto &pt : passedPoints) {
-      points->InsertNextPoint(pt[0], pt[1], pt[2]);
+    points = vtkNew<vtkPoints>();
+    for (const auto pt : passedPoints) {
+      double tp[3] = {pt[0], pt[1], 0.};
+      if constexpr (D == 3)
+        tp[2] = pt[2];
+      points->InsertNextPoint(tp);
     }
   }
 
@@ -54,6 +58,15 @@ public:
       return;
     }
 
+    if (tree != nullptr) {
+      lsMessage::getInstance()
+          .addWarning("Tree has already been built!")
+          .print();
+      return;
+    }
+
+    tree = vtkNew<vtkKdTree>();
+
     if constexpr (D == 2)
       tree->OmitZPartitioning();
 
@@ -62,7 +75,10 @@ public:
 
   std::pair<SizeType, T> findNearest(const VectorType &x) const override {
     double dist;
-    vtkIdType id = tree->FindClosestPoint(x[0], x[1], x[2], dist);
+    double tp[] = {x[0], x[1], 0.};
+    if constexpr (D == 3)
+      tp[2] = x[2];
+    vtkIdType id = tree->FindClosestPoint(tp, dist);
     return {id, dist};
   }
 
@@ -70,7 +86,10 @@ public:
   findKNearest(const VectorType &x, const int k) const override {
     auto result = lsSmartPointer<std::vector<std::pair<SizeType, T>>>::New();
     result->reserve(k);
-    double tp[] = {x[0], x[1], x[2]};
+    double tp[] = {x[0], x[1], 0.};
+    if constexpr (D == 3)
+      tp[2] = x[2];
+
     vtkNew<vtkIdList> ids;
     tree->FindClosestNPoints(k, tp, ids);
 
