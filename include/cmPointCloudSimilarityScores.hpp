@@ -19,11 +19,16 @@ struct cmPointCloudSimilarityScore {
   virtual T calculate(lsSmartPointer<std::vector<VectorType>>) = 0;
 };
 
+/**
+ * Based on the chamfer distance score introduced in "A Point Set Generation
+ * Network for 3D Object Reconstruction from a Single Image" by H. Fan et. al.
+ * (https://arxiv.org/pdf/1612.00603.pdf)
+ */
 template <class T, int D, class VectorType = std::array<T, 3>,
           class LocatorType = cmKDTree<VectorType>>
-class cmChamferDistanceScore : cmPointCloudSimilarityScore<T, D> {
+class cmChamferDistanceScore : cmPointCloudSimilarityScore<T, D, VectorType> {
   static_assert(
-      std::is_base_of<cmPointLocator<std::array<T, 3>>, LocatorType>::value,
+      std::is_base_of<cmPointLocator<VectorType>, LocatorType>::value,
       "The passed point locator is not a subclass of cmPointLocator.");
 
   lsSmartPointer<std::vector<VectorType>> firstPointCloud = nullptr;
@@ -51,25 +56,26 @@ public:
           .print();
       return std::numeric_limits<T>::infinity();
     }
+
     // Only build the first locator if it hasn't been build yet
     if (buildLocator) {
       buildLocator = false;
-      firstLocator = lsSmartPointer<LocatorType>::New(firstPointCloud);
+      firstLocator = lsSmartPointer<LocatorType>::New(*firstPointCloud);
       firstLocator->build();
     }
 
-    auto secondLocator = lsSmartPointer<LocatorType>::New(secondPointCloud);
+    auto secondLocator = lsSmartPointer<LocatorType>::New(*secondPointCloud);
     secondLocator->build();
 
     T sum = 0.;
 
 #pragma omp parallel for default(shared) reduction(+ : sum)
-    for (const auto &node : secondPointCloud) {
+    for (const auto &node : *secondPointCloud) {
       sum += firstLocator->findNearest(node).second;
     }
 
 #pragma omp parallel for default(shared) reduction(+ : sum)
-    for (const auto &node : firstPointCloud) {
+    for (const auto &node : *firstPointCloud) {
       sum += secondLocator->findNearest(node).second;
     }
 
