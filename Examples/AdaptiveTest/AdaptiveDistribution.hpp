@@ -48,9 +48,10 @@ class AdaptiveDistribution : public lsGeometricAdvectDistribution<T, D> {
   generateNormalBasis(const std::array<T, 3> &n) {
     // Row major representation
     // Calculates normal basis using Gram Schmidt procedure with vector n as
-    // initial vector. If n is not parallel to the unit vector in axis D-1, this
-    // axis will be used as second orientation vector in the gram schmidt
-    // procedure. In 3D the third basis vector is calculated by taking the
+    // initial vector. The unit vector of axis D-1 will be used as the second
+    // orientation vector in the orthogonalization procedure. If n is
+    // (anti)parallel to the axis D-1, the unit vector of axis 0 is used
+    // instead. In 3D the third basis vector is calculated by taking the
     // cross-product of the two other base vectors.
 
     std::array<T, D * D> basis({0.});
@@ -138,48 +139,57 @@ public:
     const auto &curvature = curvatures[initialPointId];
     const T curvatureThreshold = gridDelta;
 
+    T thickness = std::max(0.5, (initial[D - 1] + 40.) / 10);
+
+    if (candidate[D - 1] < 0.)
+      thickness /= 2;
+    // T radius2 = radius * radius;
+
+    std::array<T, D> halfAxis{};
+    halfAxis[0] = thickness;
+    halfAxis[1] = gridDelta;
+    if constexpr (D == 3)
+      halfAxis[2] = gridDelta;
+
     std::array<hrleCoordType, 3> v{0.};
     for (unsigned i = 0; i < D; ++i)
       v[i] = candidate[i] - initial[i];
 
-    T radius = std::max(0.5, (initial[D - 1] + 40.) / 10);
-    T radius2 = radius * radius;
+    // if (curvature > curvatureThreshold) {
+    //  Convex part
+    std::array<T, D * D> inv;
+    bool contains = false;
+    {
+      std::shared_lock<std::shared_mutex> r_lock(lock);
+      auto it = map.find(normal);
+      contains = it != map.end();
+      if (contains)
+        inv = it->second;
+    }
+    if (!contains) {
+      auto normalBasis = generateNormalBasis(normal);
+      inv = inverse(normalBasis);
+      // Do stuff
+      std::unique_lock<std::shared_mutex> w_lock(lock);
+      map.insert(std::pair{normal, inv});
+    }
 
-    if (curvature > curvatureThreshold) {
-      // Convex part
-      std::array<T, D * D> inv;
-      bool contains = false;
-      {
-        std::shared_lock<std::shared_mutex> r_lock(lock);
-        auto it = map.find(normal);
-        contains = it != map.end();
-        if (contains)
-          inv = it->second;
-      }
-      if (!contains) {
-        auto normalBasis = generateNormalBasis(normal);
-        inv = inverse(normalBasis);
-        // Do stuff
-        std::unique_lock<std::shared_mutex> w_lock(lock);
-        map.insert(std::pair{normal, inv});
-      }
+    auto vprime = matMul(inv, v);
 
-      auto vprime = matMul(inv, v);
-
-      T distance = std::numeric_limits<T>::lowest();
-      // static constexpr auto points = generatePoints();
-      // static constexpr auto normals = generateNormals();
-      // for (unsigned i = 0; i < 2; ++i) {
-      //   distance =
-      //       std::max(distance, dotProduct(subtract(v, points[i]),
-      //       normals[i]));
-      for (unsigned i = 0; i < D; ++i) {
-        T vector = std::abs(vprime[i]);
-        distance = std::max(vector - std::abs(radius), distance);
-      }
-      //}
-      return distance;
-    } else {
+    T distance = std::numeric_limits<T>::lowest();
+    // static constexpr auto points = generatePoints();
+    // static constexpr auto normals = generateNormals();
+    // for (unsigned i = 0; i < 2; ++i) {
+    //   distance =
+    //       std::max(distance, dotProduct(subtract(v, points[i]),
+    //       normals[i]));
+    for (unsigned i = 0; i < D; ++i) {
+      T vector = std::abs(vprime[i]);
+      distance = std::max(vector - std::abs(halfAxis[i]), distance);
+    }
+    //}
+    return distance;
+    /*} else {
       // Flat and Concave regions
 
       // Spherical Distribution (approximation of spherical signed distance)
@@ -203,7 +213,8 @@ public:
         }
       }
       return distance;
-    }
+
+  }*/
   }
 
   std::array<hrleCoordType, 6> getBounds() const override {
