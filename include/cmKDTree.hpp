@@ -30,12 +30,7 @@
 
 #include <algorithm>
 #include <array>
-#include <iterator>
-#include <map>
 #include <memory>
-#include <optional>
-#include <type_traits>
-#include <utility>
 #include <vector>
 
 #include <lsMessage.hpp>
