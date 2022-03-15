@@ -41,9 +41,10 @@
 #endif
 
 #include "cmBoundedPQueue.hpp"
+#include "cmClampedPQueue.hpp"
 #include "cmPointLocator.hpp"
 
-int intLog2(int x) {
+constexpr int intLog2(int x) {
   int val = 0;
   while (x >>= 1)
     ++val;
@@ -78,7 +79,6 @@ template <class VectorType> class cmKDTree : cmPointLocator<VectorType> {
   DistanceFunctionType customDistance = nullptr;
   DistanceFunctionType customReducedDistance = nullptr;
 
-public:
   struct Node {
     VectorType value;
     SizeType index;
@@ -117,7 +117,6 @@ public:
     }
   };
 
-private:
   std::vector<Node> nodes;
   Node *rootNode = nullptr;
 
@@ -179,6 +178,7 @@ private:
     }
   }
 
+public:
   /****************************************************************************
    * Distance Functions                                                       *
    ****************************************************************************/
@@ -207,6 +207,7 @@ private:
     return std::sqrt(euclideanReducedDistance(a, b));
   }
 
+private:
   T distanceReducedInternal(const VectorType &a, const VectorType &b) const {
     switch (distanceType) {
     case cmKDTreeDistanceEnum::MANHATTAN:
@@ -243,7 +244,8 @@ private:
     // For distance comparison operations we only use the "reduced" aka less
     // compute intensive, but order preserving version of the distance
     // function.
-    if constexpr (std::is_same_v<Q, cmBoundedPQueue<T, Node *>>) {
+    if constexpr (std::is_same_v<Q, cmBoundedPQueue<T, Node *>> ||
+                  std::is_same_v<Q, cmClampedPQueue<T, Node *>>) {
       queue.enqueue(std::pair{distanceReducedInternal(x, currentNode->value),
                               currentNode});
     } else {
@@ -268,6 +270,13 @@ private:
     if constexpr (std::is_same_v<Q, cmBoundedPQueue<T, Node *>>) {
       if (queue.size() < queue.maxSize() ||
           std::abs(x[axis] - currentNode->value[axis]) < queue.worst()) {
+        if (isLeft)
+          traverseDown(currentNode->right, queue, x);
+        else
+          traverseDown(currentNode->left, queue, x);
+      }
+    } else if constexpr (std::is_same_v<Q, cmClampedPQueue<T, Node *>>) {
+      if (std::abs(x[axis] - currentNode->value[axis]) < queue.worst()) {
         if (isLeft)
           traverseDown(currentNode->right, queue, x);
         else
@@ -363,6 +372,25 @@ public:
   lsSmartPointer<std::vector<std::pair<SizeType, T>>>
   findKNearest(const VectorType &x, const int k) const override {
     auto queue = cmBoundedPQueue<T, Node *>(k);
+    traverseDown(rootNode, queue, x);
+
+    auto initial = std::pair<SizeType, T>{rootNode->index,
+                                          std::numeric_limits<T>::infinity()};
+    auto result = lsSmartPointer<std::vector<std::pair<SizeType, T>>>::New();
+
+    // TODO: handle cases where k might be larger than the number of available
+    // points
+    while (!queue.empty()) {
+      auto best = queue.dequeueBest();
+      result->emplace_back(
+          std::pair{best->index, distanceInternal(x, best->value)});
+    }
+    return result;
+  }
+
+  lsSmartPointer<std::vector<std::pair<SizeType, T>>>
+  findNearestWithinRadius(const VectorType &x, const T radius) const {
+    auto queue = cmClampedPQueue<T, Node *>(radius);
     traverseDown(rootNode, queue, x);
 
     auto initial = std::pair<SizeType, T>{rootNode->index,
