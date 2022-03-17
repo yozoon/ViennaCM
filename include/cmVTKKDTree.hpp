@@ -10,6 +10,7 @@
 #include <vtkPoints.h>
 #include <vtkSmartPointer.h>
 
+#include "cmInternal.hpp"
 #include "cmPointLocator.hpp"
 
 template <class VectorType> class cmVTKKDTree : cmPointLocator<VectorType> {
@@ -21,15 +22,6 @@ template <class VectorType> class cmVTKKDTree : cmPointLocator<VectorType> {
 private:
   vtkSmartPointer<vtkPoints> points = nullptr;
   vtkSmartPointer<vtkKdTree> tree = nullptr;
-
-  static T distance(const VectorType &a, const VectorType &b) {
-    T sum{0};
-    for (int i = 0; i < D; ++i) {
-      T d = b[i] - a[i];
-      sum += d * d;
-    }
-    return std::sqrt(sum);
-  }
 
 public:
   cmVTKKDTree() {}
@@ -45,11 +37,13 @@ public:
   }
 
   void build() override {
+#ifndef NDEBUG
     lsMessage::getInstance()
         .addWarning(
             "cmVTKKdTree does not give the right distance for points "
             "outside of the initial geometries' bounding box at the moment!")
         .print();
+#endif
 
     if (points->GetNumberOfPoints() == 0) {
       lsMessage::getInstance()
@@ -102,7 +96,31 @@ public:
       v[1] = p[1];
       if constexpr (D == 3)
         v[2] = p[2];
-      result->emplace_back(std::pair{id, distance(x, v)});
+      result->emplace_back(std::pair{id, cmInternal::euclideanDistance(x, v)});
+    }
+    return result;
+  }
+
+  lsSmartPointer<std::vector<std::pair<SizeType, T>>>
+  findNearestWithinRadius(const VectorType &x, const T radius) const override {
+    auto result = lsSmartPointer<std::vector<std::pair<SizeType, T>>>::New();
+    double tp[] = {x[0], x[1], 0.};
+    if constexpr (D == 3)
+      tp[2] = x[2];
+
+    vtkNew<vtkIdList> ids;
+    tree->FindPointsWithinRadius(radius, tp, ids);
+
+    for (vtkIdType i = 0; i < ids->GetNumberOfIds(); ++i) {
+      vtkIdType id = ids->GetId(i);
+      double p[3];
+      points->GetPoint(id, p);
+      VectorType v;
+      v[0] = p[0];
+      v[1] = p[1];
+      if constexpr (D == 3)
+        v[2] = p[2];
+      result->emplace_back(std::pair{id, cmInternal::euclideanDistance(x, v)});
     }
     return result;
   }

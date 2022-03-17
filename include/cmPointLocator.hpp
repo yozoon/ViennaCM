@@ -22,5 +22,8 @@ template <class VectorType> struct cmPointLocator {
 
   virtual lsSmartPointer<std::vector<std::pair<SizeType, T>>>
   findKNearest(const VectorType &x, const int k) const = 0;
+
+  virtual lsSmartPointer<std::vector<std::pair<SizeType, T>>>
+  findNearestWithinRadius(const VectorType &x, const T radius) const = 0;
 };
 #endif

@@ -42,14 +42,8 @@
 
 #include "cmBoundedPQueue.hpp"
 #include "cmClampedPQueue.hpp"
+#include "cmInternal.hpp"
 #include "cmPointLocator.hpp"
-
-constexpr int intLog2(int x) {
-  int val = 0;
-  while (x >>= 1)
-    ++val;
-  return val;
-}
 
 enum struct cmKDTreeDistanceEnum : unsigned {
   MANHATTAN = 0,
@@ -78,7 +72,6 @@ template <class VectorType> class cmKDTree : cmPointLocator<VectorType> {
   cmKDTreeDistanceEnum distanceType = cmKDTreeDistanceEnum::EUCLIDEAN;
   DistanceFunctionType customDistance = nullptr;
   DistanceFunctionType customReducedDistance = nullptr;
-
   struct Node {
     VectorType value;
     SizeType index;
@@ -178,56 +171,27 @@ template <class VectorType> class cmKDTree : cmPointLocator<VectorType> {
     }
   }
 
-public:
-  /****************************************************************************
-   * Distance Functions                                                       *
-   ****************************************************************************/
-  static T manhattanReducedDistance(const VectorType &a, const VectorType &b) {
-    T sum{0};
-    for (int i = 0; i < D; ++i)
-      sum += std::abs(b[i] - a[i]);
-
-    return sum;
-  }
-
-  static T euclideanReducedDistance(const VectorType &a, const VectorType &b) {
-    T sum{0};
-    for (int i = 0; i < D; ++i) {
-      T d = b[i] - a[i];
-      sum += d * d;
-    }
-    return sum;
-  }
-
-  static T manhattanDistance(const VectorType &a, const VectorType &b) {
-    return manhattanReducedDistance(a, b);
-  }
-
-  static T euclideanDistance(const VectorType &a, const VectorType &b) {
-    return std::sqrt(euclideanReducedDistance(a, b));
-  }
-
 private:
   T distanceReducedInternal(const VectorType &a, const VectorType &b) const {
     switch (distanceType) {
     case cmKDTreeDistanceEnum::MANHATTAN:
-      return manhattanReducedDistance(a, b);
+      return cmInternal::manhattanReducedDistance(a, b);
     case cmKDTreeDistanceEnum::CUSTOM:
       return customReducedDistance(a, b);
       break;
     default:
-      return euclideanReducedDistance(a, b);
+      return cmInternal::euclideanReducedDistance(a, b);
     }
   }
 
   T distanceInternal(const VectorType &a, const VectorType &b) const {
     switch (distanceType) {
     case cmKDTreeDistanceEnum::MANHATTAN:
-      return manhattanDistance(a, b);
+      return cmInternal::manhattanDistance(a, b);
     case cmKDTreeDistanceEnum::CUSTOM:
       return customDistance(a, b);
     default:
-      return euclideanDistance(a, b);
+      return cmInternal::euclideanDistance(a, b);
     }
   }
 
@@ -267,28 +231,22 @@ private:
     // distance intersects the hyperplane defined by the partitioning of the
     // current node, we also have to search the other subtree, since there could
     // be points closer to x than our current best.
+    bool intersects = false;
+
     if constexpr (std::is_same_v<Q, cmBoundedPQueue<T, Node *>>) {
-      if (queue.size() < queue.maxSize() ||
-          std::abs(x[axis] - currentNode->value[axis]) < queue.worst()) {
-        if (isLeft)
-          traverseDown(currentNode->right, queue, x);
-        else
-          traverseDown(currentNode->left, queue, x);
-      }
+      intersects = queue.size() < queue.maxSize() ||
+                   std::abs(x[axis] - currentNode->value[axis]) < queue.worst();
     } else if constexpr (std::is_same_v<Q, cmClampedPQueue<T, Node *>>) {
-      if (std::abs(x[axis] - currentNode->value[axis]) < queue.worst()) {
-        if (isLeft)
-          traverseDown(currentNode->right, queue, x);
-        else
-          traverseDown(currentNode->left, queue, x);
-      }
+      intersects = std::abs(x[axis] - currentNode->value[axis]) < queue.worst();
     } else {
-      if (std::abs(x[axis] - currentNode->value[axis]) < queue.second) {
-        if (isLeft)
-          traverseDown(currentNode->right, queue, x);
-        else
-          traverseDown(currentNode->left, queue, x);
-      }
+      intersects = std::abs(x[axis] - currentNode->value[axis]) < queue.second;
+    }
+
+    if (intersects) {
+      if (isLeft)
+        traverseDown(currentNode->right, queue, x);
+      else
+        traverseDown(currentNode->left, queue, x);
     }
     return;
   }
@@ -322,7 +280,7 @@ public:
         numThreads = omp_get_num_threads();
         threadID = omp_get_thread_num();
 #endif
-        maxParallelDepth = intLog2(numThreads);
+        maxParallelDepth = cmInternal::intLog2(numThreads);
         surplusWorkers = numThreads - 1 << maxParallelDepth;
 
         SizeType size = nodes.end() - nodes.begin();
@@ -378,8 +336,6 @@ public:
                                           std::numeric_limits<T>::infinity()};
     auto result = lsSmartPointer<std::vector<std::pair<SizeType, T>>>::New();
 
-    // TODO: handle cases where k might be larger than the number of available
-    // points
     while (!queue.empty()) {
       auto best = queue.dequeueBest();
       result->emplace_back(
@@ -389,7 +345,7 @@ public:
   }
 
   lsSmartPointer<std::vector<std::pair<SizeType, T>>>
-  findNearestWithinRadius(const VectorType &x, const T radius) const {
+  findNearestWithinRadius(const VectorType &x, const T radius) const override {
     auto queue = cmClampedPQueue<T, Node *>(radius);
     traverseDown(rootNode, queue, x);
 
@@ -397,8 +353,6 @@ public:
                                           std::numeric_limits<T>::infinity()};
     auto result = lsSmartPointer<std::vector<std::pair<SizeType, T>>>::New();
 
-    // TODO: handle cases where k might be larger than the number of available
-    // points
     while (!queue.empty()) {
       auto best = queue.dequeueBest();
       result->emplace_back(
