@@ -1,6 +1,7 @@
 #ifndef CM_EXTRACT_CLOSEST_POINT_THICKNESS_HPP
 #define CM_EXTRACT_CLOSEST_POINT_THICKNESS_HPP
 
+#include <limits>
 #include <type_traits>
 #include <vector>
 
@@ -18,52 +19,50 @@ class cmExtractClosestPointThickness {
       "The passed point locator is not a subclass of cmPointLocator.");
 
   using SizeType = typename cmPointLocator<VectorType>::SizeType;
-  using T = typename cmPointLocator<VectorType>::T;
+  using NumericType = typename cmPointLocator<VectorType>::T;
+  typedef lsSmartPointer<lsMesh<NumericType>> MeshPtr;
+
   static constexpr int D = cmPointLocator<VectorType>::D;
 
-  lsSmartPointer<lsMesh<>> referenceMesh = nullptr;
-  lsSmartPointer<lsMesh<>> advectedMesh = nullptr;
-  lsSmartPointer<std::vector<T>> dataDestination = nullptr;
+  MeshPtr baseMesh = nullptr;
+  MeshPtr secondMesh = nullptr;
 
 public:
-  cmExtractClosestPointThickness() {}
+  cmExtractClosestPointThickness(MeshPtr passedBaseMesh,
+                                 MeshPtr passedSecondMesh)
+      : baseMesh(passedBaseMesh), secondMesh(passedSecondMesh) {}
 
-  cmExtractClosestPointThickness(
-      lsSmartPointer<lsMesh<>> passedReferenceMesh,
-      lsSmartPointer<lsMesh<>> passedAdvectedMesh,
-      lsSmartPointer<std::vector<T>> passedDataDestination)
-      : referenceMesh(passedReferenceMesh), advectedMesh(passedAdvectedMesh),
-        dataDestination(passedDataDestination) {}
+  MeshPtr getBaseMesh() const { return baseMesh; }
+
+  MeshPtr getSecondMesh() const { return secondMesh; }
 
   void apply() {
-    if (referenceMesh == nullptr || advectedMesh == nullptr) {
+    if (baseMesh == nullptr || secondMesh == nullptr) {
       lsMessage::getInstance()
-          .addWarning("The surface meshes provided to "
+          .addWarning("The disk meshes provided to "
                       "cmExtractClosestPointThickness mustn't be null.")
           .print();
       return;
     }
 
-    if (dataDestination == nullptr) {
-      lsMessage::getInstance()
-          .addWarning("No destination vector provided.")
-          .print();
-      return;
-    }
-
-    if (dataDestination->size() != 0)
-      dataDestination->clear();
-
-    auto kdtree = lsSmartPointer<LocatorType>::New(advectedMesh->nodes);
-
+    auto kdtree = lsSmartPointer<LocatorType>::New(secondMesh->nodes);
     kdtree->build();
 
-    const auto &nodes = referenceMesh->nodes;
-    dataDestination->reserve(nodes.size());
-    for (size_t i = 0; i < nodes.size(); ++i) {
-      auto nearest = kdtree->findNearest(nodes[i]);
-      dataDestination->push_back(nearest.second);
+    const auto &baseNodes = baseMesh->nodes;
+    std::vector<NumericType> layerThickness;
+    layerThickness.reserve(baseNodes.size());
+
+    for (auto &node : baseNodes) {
+      auto nearest = kdtree->findNearest(node);
+      layerThickness.push_back(nearest.second);
     }
+
+    auto &cellData = baseMesh->getCellData();
+    auto index = cellData.getScalarDataIndex("layerThickness");
+    if (index >= 0)
+      cellData.eraseScalarData(index);
+
+    cellData.insertNextScalarData(layerThickness, "layerThickness");
   }
 };
 

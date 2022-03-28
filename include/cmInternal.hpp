@@ -5,6 +5,16 @@
 #include <tuple>
 
 namespace cmInternal {
+// Pi constant with precision of used numeric type
+template <class NumericType>
+inline constexpr NumericType PI = std::acos(-NumericType(1));
+
+// Conversion from degree to radians
+template <class NumericType>
+inline constexpr NumericType radians(NumericType deg) {
+  return PI<NumericType> * deg / 180;
+}
+
 constexpr int intLog2(int x) {
   int val = 0;
   while (x >>= 1)

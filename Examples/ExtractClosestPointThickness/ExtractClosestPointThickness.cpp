@@ -28,12 +28,11 @@ int main() {
 
   using VectorType = typename decltype(baseMesh->nodes)::value_type;
 
-  cmExtractClosestPointThickness<VectorType, cmKDTree<VectorType>>(
-      baseMesh, depoMesh, thickness)
-      .apply();
+  auto extractor =
+      cmExtractClosestPointThickness<VectorType, cmKDTree<VectorType>>(
+          baseMesh, depoMesh);
+  extractor.apply();
 
-  baseMesh->getPointData().insertNextScalarData(*thickness, "thickness");
-
-  lsVTKWriter<NumericType>(baseMesh, "first.vtk").apply();
-  lsVTKWriter<NumericType>(depoMesh, "second.vtk").apply();
+  lsVTKWriter<NumericType>(extractor.getBaseMesh(), "first.vtk").apply();
+  lsVTKWriter<NumericType>(extractor.getSecondMesh(), "second.vtk").apply();
 }

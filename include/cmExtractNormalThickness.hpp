@@ -4,6 +4,7 @@
 #include <embree3/rtcore.h>
 
 #include <lsMesh.hpp>
+#include <lsPointData.hpp>
 #include <lsSmartPointer.hpp>
 
 #include <rayBoundCondition.hpp>
@@ -170,8 +171,12 @@ public:
       assert(rayHit.hit.geomID == geometryID && "Geometry hit ID invalid");
     }
 
-    baseMesh->getCellData().insertNextScalarData(normalThickness,
-                                                 "normalThickness");
+    auto &cellData = baseMesh->getCellData();
+    auto index = cellData.getScalarDataIndex("normalThickness");
+    if (index >= 0)
+      cellData.eraseScalarData(index);
+
+    cellData.insertNextScalarData(normalThickness, "normalThickness");
 
     rtcReleaseGeometry(rtcGeometry);
     rtcReleaseGeometry(rtcBoundary);

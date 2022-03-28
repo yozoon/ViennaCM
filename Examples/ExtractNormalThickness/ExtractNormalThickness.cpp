@@ -9,16 +9,7 @@
 #include <lsVTKWriter.hpp>
 
 #include "cmExtractNormalThickness.hpp"
-
-// Pi constant with precision of used numeric type
-template <class NumericType>
-inline constexpr NumericType PI = std::acos(-NumericType(1));
-
-// Conversion from degree to radians
-template <class NumericType>
-inline constexpr NumericType radians(NumericType deg) {
-  return PI<NumericType> * deg / 180;
-}
+#include "cmInternal.hpp"
 
 // Builds a disk mesh along one sidewall + topThickness
 template <class NumericType, int D>
@@ -31,7 +22,7 @@ createExtractionMesh(NumericType depth, NumericType topDiameter,
 
   std::array<NumericType, 3> origin = {0., 0., 0.};
 
-  NumericType taperAngleRadians = radians(taperAngle);
+  NumericType taperAngleRadians = cmInternal::radians(taperAngle);
 
   NumericType topThickness = duration * stickingProbability;
   NumericType length = (depth + topThickness) / std::cos(taperAngleRadians);
