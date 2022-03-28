@@ -1,21 +1,62 @@
 cmake_minimum_required(VERSION 3.4)
 
 project(
-    "ViennaCM"
-    VERSION 0.0.1)
+  "ViennaCM"
+  VERSION 0.0.1
+  LANGUAGES CXX)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+include(GNUInstallDirs)
 
-set(CMAKE_CXX_STANDARD "17")
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# set default build type
+SET(DEFAULT_BUILD_TYPE "Release")
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
+  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE
+      STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+    "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
 
-find_package(ViennaLS REQUIRED PATHS ${ViennaLS_DIR})
-find_package(ViennaRay REQUIRED PATHS ${ViennRay_DIR})
+set(ViennaHRLE_DIR $ENV{VIENNAHRLE_DIR})
+set(ViennaLS_DIR $ENV{VIENNALS_DIR})
+set(ViennaRay_DIR $ENV{VIENNARAY_DIR})
 
-#add_executable(lt src/layerThickness.cpp)
-include_directories(lt PUBLIC include)
-#target_include_directories(lt PUBLIC ${VIENNALS_INCLUDE_DIRS})
-#target_link_libraries(lt ${VIENNALS_LIBRARIES})
+find_package(ViennaHRLE REQUIRED)
+find_package(ViennaLS REQUIRED)
+find_package(ViennaRay REQUIRED)
+
+list(APPEND VIENNACM_LIBRARIES ${VIENNARAY_LIBRARIES})
+
+set(
+    VIENNACM_INCLUDE_DIRS 
+    "${VIENNALS_INCLUDE_DIRS}" 
+    "${VIENNARAY_INCLUDE_DIRS}"
+    "${${PROJECT_NAME}_SOURCE_DIR}/include" 
+    "${${PROJECT_NAME}_SOURCE_DIR}/include/cellSet" 
+    )
+
+
+# VTK
+if(NOT VTK_DIR)
+    set(VTK_DIR $ENV{VTK_DIR})
+endif(NOT VTK_DIR)
+
+find_package(VTK REQUIRED)
+if(VTK_FOUND)
+  message(STATUS "Found VTK")
+  add_compile_definitions(VIENNACM_USE_VTK)
+
+  if (VTK_VERSION VERSION_LESS "8.90")
+    message(STATUS "Using old VTK Version: ${VTK_VERSION}")
+    include(${VTK_USE_FILE})
+  endif()
+  # only link needed vtk libraries
+  # set(VTK_LIBRARIES vtksys;vtkIOCore;vtkexpat;vtklz4;vtkzlib;vtklzma;vtkdoubleconversion;vtkCommonMisc;vtkCommonSystem;vtkIOXML)
+  list(APPEND VIENNACM_LIBRARIES ${VTK_LIBRARIES})
+else(VTK_FOUND)
+  message(FATAL_ERROR "No VTK install found.")
+endif(VTK_FOUND)
 
 #################################################
 # BUILD EXAMPLES

@@ -2,6 +2,7 @@
 #define CM_INTERNAL_HPP
 
 #include <cmath>
+#include <tuple>
 
 namespace cmInternal {
 constexpr int intLog2(int x) {
