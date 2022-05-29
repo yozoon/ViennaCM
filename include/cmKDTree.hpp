@@ -208,7 +208,17 @@ private:
 
   typename VectorType::value_type euclideanDistance(const VectorType &a,
                                                     const VectorType &b) const {
-    return std::sqrt(euclideanReducedDistance(a, b));
+    constexpr int D = std::tuple_size<VectorType>();
+
+    typename VectorType::value_type sum{0};
+    for (int i = 0; i < D; ++i) {
+      typename VectorType::value_type d = b[i] - a[i];
+      sum += d * d;
+    }
+    if (sum <= gridDelta * gridDelta)
+      return manhattanReducedDistance(a, b);
+
+    return std::sqrt(sum);
   }
 
   T distanceReducedInternal(const VectorType &a, const VectorType &b) const {
