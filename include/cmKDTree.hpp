@@ -72,6 +72,9 @@ template <class VectorType> class cmKDTree : cmPointLocator<VectorType> {
   cmKDTreeDistanceEnum distanceType = cmKDTreeDistanceEnum::EUCLIDEAN;
   DistanceFunctionType customDistance = nullptr;
   DistanceFunctionType customReducedDistance = nullptr;
+
+  T gridDelta;
+
   struct Node {
     VectorType value;
     SizeType index;
@@ -172,26 +175,62 @@ template <class VectorType> class cmKDTree : cmPointLocator<VectorType> {
   }
 
 private:
+  typename VectorType::value_type
+  manhattanReducedDistance(const VectorType &a, const VectorType &b) const {
+    constexpr int D = std::tuple_size<VectorType>();
+
+    typename VectorType::value_type sum{0};
+    for (int i = 0; i < D; ++i)
+      sum += std::abs(b[i] - a[i]);
+
+    return sum;
+  }
+
+  const typename VectorType::value_type
+  euclideanReducedDistance(const VectorType &a, const VectorType &b) const {
+    constexpr int D = std::tuple_size<VectorType>();
+
+    typename VectorType::value_type sum{0};
+    for (int i = 0; i < D; ++i) {
+      typename VectorType::value_type d = b[i] - a[i];
+      sum += d * d;
+    }
+    if (sum <= gridDelta * gridDelta)
+      return manhattanReducedDistance(a, b);
+
+    return sum;
+  }
+
+  typename VectorType::value_type manhattanDistance(const VectorType &a,
+                                                    const VectorType &b) const {
+    return manhattanReducedDistance(a, b);
+  }
+
+  typename VectorType::value_type euclideanDistance(const VectorType &a,
+                                                    const VectorType &b) const {
+    return std::sqrt(euclideanReducedDistance(a, b));
+  }
+
   T distanceReducedInternal(const VectorType &a, const VectorType &b) const {
     switch (distanceType) {
     case cmKDTreeDistanceEnum::MANHATTAN:
-      return cmInternal::manhattanReducedDistance(a, b);
+      return manhattanReducedDistance(a, b);
     case cmKDTreeDistanceEnum::CUSTOM:
       return customReducedDistance(a, b);
       break;
     default:
-      return cmInternal::euclideanReducedDistance(a, b);
+      return euclideanReducedDistance(a, b);
     }
   }
 
   T distanceInternal(const VectorType &a, const VectorType &b) const {
     switch (distanceType) {
     case cmKDTreeDistanceEnum::MANHATTAN:
-      return cmInternal::manhattanDistance(a, b);
+      return manhattanDistance(a, b);
     case cmKDTreeDistanceEnum::CUSTOM:
       return customDistance(a, b);
     default:
-      return cmInternal::euclideanDistance(a, b);
+      return euclideanDistance(a, b);
     }
   }
 
@@ -254,7 +293,7 @@ private:
 public:
   cmKDTree() {}
 
-  cmKDTree(std::vector<VectorType> &passedPoints) {
+  cmKDTree(std::vector<VectorType> &passedPoints, T passedGridDelta = 0.) {
     nodes.reserve(passedPoints.size());
     {
       for (SizeType i = 0; i < passedPoints.size(); ++i) {
