@@ -195,7 +195,7 @@ private:
       typename VectorType::value_type d = b[i] - a[i];
       sum += d * d;
     }
-    if (sum <= gridDelta * gridDelta)
+    if (sum <= gridDelta)
       return manhattanReducedDistance(a, b);
 
     return sum;
@@ -215,7 +215,7 @@ private:
       typename VectorType::value_type d = b[i] - a[i];
       sum += d * d;
     }
-    if (sum <= gridDelta * gridDelta)
+    if (sum <= gridDelta)
       return manhattanReducedDistance(a, b);
 
     return std::sqrt(sum);
