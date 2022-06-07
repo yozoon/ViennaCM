@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.4)
 project(
   "ViennaCM"
   VERSION 0.0.1
-  LANGUAGES CXX)
+  LANGUAGES CXX C)
 
 include(GNUInstallDirs)
 

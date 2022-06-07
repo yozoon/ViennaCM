@@ -12,17 +12,15 @@
 
 #include "cmKDTree.hpp"
 
-template <class VectorType, class LocatorType = cmKDTree<VectorType>>
+template <class NumericType, int D,
+          class LocatorType = cmKDTree<NumericType, D, 3>>
 class cmExtractClosestPointThickness {
   static_assert(
-      std::is_base_of<cmPointLocator<VectorType>, LocatorType>::value,
+      std::is_base_of<cmPointLocator<NumericType, D, 3>, LocatorType>::value,
       "The passed point locator is not a subclass of cmPointLocator.");
 
-  using SizeType = typename cmPointLocator<VectorType>::SizeType;
-  using NumericType = typename cmPointLocator<VectorType>::T;
-  typedef lsSmartPointer<lsMesh<NumericType>> MeshPtr;
-
-  static constexpr int D = cmPointLocator<VectorType>::D;
+  using SizeType = typename cmPointLocator<NumericType, D, 3>::SizeType;
+  typedef lsSmartPointer<lsMesh<>> MeshPtr;
 
   MeshPtr baseMesh = nullptr;
   MeshPtr secondMesh = nullptr;

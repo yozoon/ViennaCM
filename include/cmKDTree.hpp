@@ -45,22 +45,10 @@
 #include "cmInternal.hpp"
 #include "cmPointLocator.hpp"
 
-enum struct cmKDTreeDistanceEnum : unsigned {
-  MANHATTAN = 0,
-  EUCLIDEAN = 1,
-  CUSTOM = 2
-};
-
-template <class Iterator>
-typename Iterator::pointer toRawPointer(const Iterator it) {
-  return &(*it);
-}
-
-template <class VectorType> class cmKDTree : cmPointLocator<VectorType> {
-  using typename cmPointLocator<VectorType>::SizeType;
-  using typename cmPointLocator<VectorType>::T;
-  using cmPointLocator<VectorType>::D;
-  using typename cmPointLocator<VectorType>::DistanceFunctionType;
+template <class NumericType, int D, int Dim = D>
+class cmKDTree : cmPointLocator<NumericType, D, Dim> {
+  using typename cmPointLocator<NumericType, D, Dim>::VectorType;
+  using typename cmPointLocator<NumericType, D, Dim>::SizeType;
 
   SizeType N;
   SizeType treeSize = 0;
@@ -69,11 +57,7 @@ template <class VectorType> class cmKDTree : cmPointLocator<VectorType> {
   int maxParallelDepth = 0;
   int surplusWorkers = 0;
 
-  cmKDTreeDistanceEnum distanceType = cmKDTreeDistanceEnum::EUCLIDEAN;
-  DistanceFunctionType customDistance = nullptr;
-  DistanceFunctionType customReducedDistance = nullptr;
-
-  T gridDelta;
+  NumericType gridDelta;
 
   struct Node {
     VectorType value;
@@ -116,6 +100,11 @@ template <class VectorType> class cmKDTree : cmPointLocator<VectorType> {
   std::vector<Node> nodes;
   Node *rootNode = nullptr;
 
+  template <class Iterator>
+  static typename Iterator::pointer toRawPointer(const Iterator it) {
+    return &(*it);
+  }
+
   void build(Node *parent, typename std::vector<Node>::iterator start,
              typename std::vector<Node>::iterator end, int depth,
              bool isLeft) const {
@@ -125,8 +114,6 @@ template <class VectorType> class cmKDTree : cmPointLocator<VectorType> {
 
     if (size > 1) {
       SizeType medianIndex = (size + 1) / 2 - 1;
-      // TODO: We could think about adding custom comparison operations, which
-      // would allow for splitting of the data along D arbitrary axes.
       std::nth_element(
           start, start + medianIndex, end,
           [axis](Node &a, Node &b) { return a.value[axis] < b.value[axis]; });
@@ -175,79 +162,53 @@ template <class VectorType> class cmKDTree : cmPointLocator<VectorType> {
   }
 
 private:
-  typename VectorType::value_type
-  manhattanReducedDistance(const VectorType &a, const VectorType &b) const {
-    constexpr int D = std::tuple_size<VectorType>();
-
-    typename VectorType::value_type sum{0};
-    for (int i = 0; i < D; ++i)
-      sum += std::abs(b[i] - a[i]);
-
-    return sum;
-  }
-
-  const typename VectorType::value_type
-  euclideanReducedDistance(const VectorType &a, const VectorType &b) const {
-    constexpr int D = std::tuple_size<VectorType>();
-
-    typename VectorType::value_type sum{0};
-    for (int i = 0; i < D; ++i) {
-      typename VectorType::value_type d = b[i] - a[i];
-      sum += d * d;
-    }
-    if (sum <= gridDelta)
-      return manhattanReducedDistance(a, b);
-
-    return sum;
-  }
-
-  typename VectorType::value_type manhattanDistance(const VectorType &a,
-                                                    const VectorType &b) const {
-    return manhattanReducedDistance(a, b);
-  }
-
-  typename VectorType::value_type euclideanDistance(const VectorType &a,
-                                                    const VectorType &b) const {
-    constexpr int D = std::tuple_size<VectorType>();
-
-    typename VectorType::value_type sum{0};
-    for (int i = 0; i < D; ++i) {
-      typename VectorType::value_type d = b[i] - a[i];
-      sum += d * d;
-    }
-    if (sum <= gridDelta)
-      return manhattanReducedDistance(a, b);
-
-    return std::sqrt(sum);
-  }
-
-  T distanceReducedInternal(const VectorType &a, const VectorType &b) const {
-    switch (distanceType) {
-    case cmKDTreeDistanceEnum::MANHATTAN:
-      return manhattanReducedDistance(a, b);
-    case cmKDTreeDistanceEnum::CUSTOM:
-      return customReducedDistance(a, b);
-      break;
-    default:
-      return euclideanReducedDistance(a, b);
-    }
-  }
-
-  T distanceInternal(const VectorType &a, const VectorType &b) const {
-    switch (distanceType) {
-    case cmKDTreeDistanceEnum::MANHATTAN:
-      return manhattanDistance(a, b);
-    case cmKDTreeDistanceEnum::CUSTOM:
-      return customDistance(a, b);
-    default:
-      return euclideanDistance(a, b);
-    }
-  }
-
   /****************************************************************************
    * Recursive Tree Traversal                                                 *
    ****************************************************************************/
-  template <class Q>
+  void traverseDown(Node *currentNode, std::pair<NumericType, Node *> &best,
+                    const VectorType &x) const {
+    if (currentNode == nullptr)
+      return;
+
+    int axis = currentNode->axis;
+
+    // For distance comparison operations we only use the "reduced" aka less
+    // compute intensive, but order preserving version of the distance
+    // function.
+    NumericType distance =
+        cmInternal::euclideanReducedDistance(x, currentNode->value);
+    if (distance < best.first)
+      best = std::pair{distance, currentNode};
+
+    bool isLeft;
+    if (x[axis] < currentNode->value[axis]) {
+      traverseDown(currentNode->left, best, x);
+      isLeft = true;
+    } else {
+      traverseDown(currentNode->right, best, x);
+      isLeft = false;
+    }
+
+    // If the hypersphere with origin at x and a radius of our current best
+    // distance intersects the hyperplane defined by the partitioning of the
+    // current node, we also have to search the other subtree, since there could
+    // be points closer to x than our current best.
+    NumericType distanceToHyperplane =
+        std::abs(x[axis] - currentNode->value[axis]);
+    distanceToHyperplane *= distanceToHyperplane;
+    if (distanceToHyperplane < best.first) {
+      if (isLeft)
+        traverseDown(currentNode->right, best, x);
+      else
+        traverseDown(currentNode->left, best, x);
+    }
+    return;
+  }
+
+  template <typename Q,
+            typename = std::enable_if_t<
+                std::is_same_v<Q, cmBoundedPQueue<NumericType, Node *>> ||
+                std::is_same_v<Q, cmClampedPQueue<NumericType, Node *>>>>
   void traverseDown(Node *currentNode, Q &queue, const VectorType &x) const {
     if (currentNode == nullptr)
       return;
@@ -257,15 +218,9 @@ private:
     // For distance comparison operations we only use the "reduced" aka less
     // compute intensive, but order preserving version of the distance
     // function.
-    if constexpr (std::is_same_v<Q, cmBoundedPQueue<T, Node *>> ||
-                  std::is_same_v<Q, cmClampedPQueue<T, Node *>>) {
-      queue.enqueue(std::pair{distanceReducedInternal(x, currentNode->value),
-                              currentNode});
-    } else {
-      T distance = distanceReducedInternal(x, currentNode->value);
-      if (distance < queue.second)
-        queue = std::pair{currentNode, distance};
-    }
+    queue.enqueue(
+        std::pair{cmInternal::euclideanReducedDistance(x, currentNode->value),
+                  currentNode});
 
     bool isLeft;
     if (x[axis] < currentNode->value[axis]) {
@@ -280,15 +235,17 @@ private:
     // distance intersects the hyperplane defined by the partitioning of the
     // current node, we also have to search the other subtree, since there could
     // be points closer to x than our current best.
-    bool intersects = false;
+    NumericType distanceToHyperplane =
+        std::abs(x[axis] - currentNode->value[axis]);
+    distanceToHyperplane *= distanceToHyperplane;
 
-    if constexpr (std::is_same_v<Q, cmBoundedPQueue<T, Node *>>) {
+    bool intersects = false;
+    if constexpr (std::is_same_v<Q, cmBoundedPQueue<NumericType, Node *>>) {
       intersects = queue.size() < queue.maxSize() ||
-                   std::abs(x[axis] - currentNode->value[axis]) < queue.worst();
-    } else if constexpr (std::is_same_v<Q, cmClampedPQueue<T, Node *>>) {
-      intersects = std::abs(x[axis] - currentNode->value[axis]) < queue.worst();
-    } else {
-      intersects = std::abs(x[axis] - currentNode->value[axis]) < queue.second;
+                   distanceToHyperplane < queue.worst();
+    } else if constexpr (std::is_same_v<Q,
+                                        cmClampedPQueue<NumericType, Node *>>) {
+      intersects = distanceToHyperplane < queue.worst();
     }
 
     if (intersects) {
@@ -303,7 +260,8 @@ private:
 public:
   cmKDTree() {}
 
-  cmKDTree(std::vector<VectorType> &passedPoints, T passedGridDelta = 0.) {
+  cmKDTree(std::vector<VectorType> &passedPoints,
+           NumericType passedGridDelta = 0.) {
     nodes.reserve(passedPoints.size());
     {
       for (SizeType i = 0; i < passedPoints.size(); ++i) {
@@ -370,42 +328,48 @@ public:
     }
   }
 
-  std::pair<SizeType, T> findNearest(const VectorType &x) const override {
-    auto best = std::pair{rootNode, std::numeric_limits<T>::infinity()};
+  std::pair<SizeType, NumericType>
+  findNearest(const VectorType &x) const override {
+    auto best =
+        std::pair{std::numeric_limits<NumericType>::infinity(), rootNode};
     traverseDown(rootNode, best, x);
-    return {best.first->index, distanceInternal(x, best.first->value)};
+    return {best.second->index,
+            cmInternal::euclideanDistance(x, best.second->value)};
   }
 
-  lsSmartPointer<std::vector<std::pair<SizeType, T>>>
+  lsSmartPointer<std::vector<std::pair<SizeType, NumericType>>>
   findKNearest(const VectorType &x, const int k) const override {
-    auto queue = cmBoundedPQueue<T, Node *>(k);
+    auto queue = cmBoundedPQueue<NumericType, Node *>(k);
     traverseDown(rootNode, queue, x);
 
-    auto initial = std::pair<SizeType, T>{rootNode->index,
-                                          std::numeric_limits<T>::infinity()};
-    auto result = lsSmartPointer<std::vector<std::pair<SizeType, T>>>::New();
+    auto initial = std::pair<SizeType, NumericType>{
+        rootNode->index, std::numeric_limits<NumericType>::infinity()};
+    auto result =
+        lsSmartPointer<std::vector<std::pair<SizeType, NumericType>>>::New();
 
     while (!queue.empty()) {
       auto best = queue.dequeueBest();
-      result->emplace_back(
-          std::pair{best->index, distanceInternal(x, best->value)});
+      result->emplace_back(std::pair{
+          best->index, cmInternal::euclideanDistance(x, best->value)});
     }
     return result;
   }
 
-  lsSmartPointer<std::vector<std::pair<SizeType, T>>>
-  findNearestWithinRadius(const VectorType &x, const T radius) const override {
-    auto queue = cmClampedPQueue<T, Node *>(radius);
+  lsSmartPointer<std::vector<std::pair<SizeType, NumericType>>>
+  findNearestWithinRadius(const VectorType &x,
+                          const NumericType radius) const override {
+    auto queue = cmClampedPQueue<NumericType, Node *>(radius);
     traverseDown(rootNode, queue, x);
 
-    auto initial = std::pair<SizeType, T>{rootNode->index,
-                                          std::numeric_limits<T>::infinity()};
-    auto result = lsSmartPointer<std::vector<std::pair<SizeType, T>>>::New();
+    auto initial = std::pair<SizeType, NumericType>{
+        rootNode->index, std::numeric_limits<NumericType>::infinity()};
+    auto result =
+        lsSmartPointer<std::vector<std::pair<SizeType, NumericType>>>::New();
 
     while (!queue.empty()) {
       auto best = queue.dequeueBest();
-      result->emplace_back(
-          std::pair{best->index, distanceInternal(x, best->value)});
+      result->emplace_back(std::pair{
+          best->index, cmInternal::euclideanDistance(x, best->value)});
     }
     return result;
   }

@@ -10,12 +10,12 @@
 #include "cmPointLocator.hpp"
 
 // Extracts
-template <class T, int D, class LocatorType = cmKDTree<std::array<T, 1>>>
+template <class T, int D, class LocatorType = cmKDTree<T, D, 1>>
 class cmExtractMinThicknessAlongAxis {
   using PointType = std::array<T, 1>;
   using VectorType = std::array<T, 3>;
   static_assert(
-      std::is_base_of<cmPointLocator<PointType>, LocatorType>::value,
+      std::is_base_of<cmPointLocator<T, D, 1>, LocatorType>::value,
       "The passed point locator is not a subclass of cmPointLocator or does "
       "not work along a single axis.");
 

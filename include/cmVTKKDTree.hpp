@@ -13,11 +13,10 @@
 #include "cmInternal.hpp"
 #include "cmPointLocator.hpp"
 
-template <class VectorType> class cmVTKKDTree : cmPointLocator<VectorType> {
-  using typename cmPointLocator<VectorType>::SizeType;
-  using typename cmPointLocator<VectorType>::T;
-  using cmPointLocator<VectorType>::D;
-  using typename cmPointLocator<VectorType>::DistanceFunctionType;
+template <class NumericType, int D, int Dim = D>
+class cmVTKKDTree : cmPointLocator<NumericType, D, Dim> {
+  using typename cmPointLocator<NumericType, D, Dim>::SizeType;
+  using typename cmPointLocator<NumericType, D, Dim>::VectorType;
 
 private:
   vtkSmartPointer<vtkPoints> points = nullptr;
@@ -67,7 +66,8 @@ public:
     tree->BuildLocatorFromPoints(points);
   }
 
-  std::pair<SizeType, T> findNearest(const VectorType &x) const override {
+  std::pair<SizeType, NumericType>
+  findNearest(const VectorType &x) const override {
     double dist;
     double tp[] = {x[0], x[1], 0.};
     if constexpr (D == 3)
@@ -76,9 +76,10 @@ public:
     return {id, dist};
   }
 
-  lsSmartPointer<std::vector<std::pair<SizeType, T>>>
+  lsSmartPointer<std::vector<std::pair<SizeType, NumericType>>>
   findKNearest(const VectorType &x, const int k) const override {
-    auto result = lsSmartPointer<std::vector<std::pair<SizeType, T>>>::New();
+    auto result =
+        lsSmartPointer<std::vector<std::pair<SizeType, NumericType>>>::New();
     result->reserve(k);
     double tp[] = {x[0], x[1], 0.};
     if constexpr (D == 3)
@@ -101,9 +102,11 @@ public:
     return result;
   }
 
-  lsSmartPointer<std::vector<std::pair<SizeType, T>>>
-  findNearestWithinRadius(const VectorType &x, const T radius) const override {
-    auto result = lsSmartPointer<std::vector<std::pair<SizeType, T>>>::New();
+  lsSmartPointer<std::vector<std::pair<SizeType, NumericType>>>
+  findNearestWithinRadius(const VectorType &x,
+                          const NumericType radius) const override {
+    auto result =
+        lsSmartPointer<std::vector<std::pair<SizeType, NumericType>>>::New();
     double tp[] = {x[0], x[1], 0.};
     if constexpr (D == 3)
       tp[2] = x[2];

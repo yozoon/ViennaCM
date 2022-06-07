@@ -31,7 +31,7 @@ int main() {
   baseMesh->getPointData().insertNextScalarData(nodeIDs, "ID");
   lsVTKWriter<NumericType>(baseMesh, "annotated_mesh.vtk").apply();
 
-  auto kdtree = lsSmartPointer<cmKDTree<VectorType>>::New(baseMesh->nodes);
+  auto kdtree = lsSmartPointer<cmKDTree<NumericType, 3>>::New(baseMesh->nodes);
   kdtree->build();
 
   std::vector<hrleCoordType> nearestNodeIDs;

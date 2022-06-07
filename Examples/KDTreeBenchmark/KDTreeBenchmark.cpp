@@ -34,7 +34,7 @@ template <class T, int D> std::vector<std::array<T, D>> generatePoints(int N) {
 #endif
 
     auto engine = std::default_random_engine(rd());
-    std::normal_distribution<> d{0, 10};
+    std::uniform_real_distribution<> d{-10., 10.};
 #pragma omp for
     for (int i = 0; i < N; ++i) {
       if constexpr (D == 3) {
@@ -88,10 +88,10 @@ int main(int argc, char *argv[]) {
     // Custom Tree
     std::cout << "\nCM KDTree\n========\nGrowing Tree..." << std::endl;
     double totalTime{0.};
-    lsSmartPointer<cmKDTree<std::array<NumericType, D>>> tree = nullptr;
+    lsSmartPointer<cmKDTree<NumericType, D>> tree = nullptr;
     auto startTime = getTime();
     for (unsigned i = 0; i < repetitions; ++i) {
-      tree = lsSmartPointer<cmKDTree<std::array<NumericType, D>>>::New(points);
+      tree = lsSmartPointer<cmKDTree<NumericType, D>>::New(points);
       tree->build();
     }
     auto endTime = getTime();
@@ -114,12 +114,11 @@ int main(int argc, char *argv[]) {
   {
     std::cout << "\nVTK KDTree\n========\nGrowing Tree..." << std::endl;
 
-    lsSmartPointer<cmVTKKDTree<std::array<NumericType, D>>> vtkTree = nullptr;
+    lsSmartPointer<cmVTKKDTree<NumericType, D>> vtkTree = nullptr;
     // VTK Tree
     auto startTime = getTime();
     for (unsigned i = 0; i < repetitions; ++i) {
-      vtkTree =
-          lsSmartPointer<cmVTKKDTree<std::array<NumericType, D>>>::New(points);
+      vtkTree = lsSmartPointer<cmVTKKDTree<NumericType, D>>::New(points);
       vtkTree->build();
     }
     auto endTime = getTime();

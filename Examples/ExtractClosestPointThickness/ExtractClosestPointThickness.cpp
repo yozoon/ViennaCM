@@ -26,11 +26,8 @@ int main() {
 
   auto thickness = lsSmartPointer<std::vector<NumericType>>::New();
 
-  using VectorType = typename decltype(baseMesh->nodes)::value_type;
-
   auto extractor =
-      cmExtractClosestPointThickness<VectorType, cmKDTree<VectorType>>(
-          baseMesh, depoMesh);
+      cmExtractClosestPointThickness<NumericType, D>(baseMesh, depoMesh);
   extractor.apply();
 
   lsVTKWriter<NumericType>(extractor.getBaseMesh(), "first.vtk").apply();
