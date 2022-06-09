@@ -130,7 +130,6 @@ int main(int argc, char *argv[]) {
     std::cout << "Finding Nearest Neighbors..." << std::endl;
     startTime = getTime();
     for (unsigned i = 0; i < repetitions; ++i) {
-
       for (const auto pt : testPoints)
         auto result = vtkTree->findNearest(pt);
     }

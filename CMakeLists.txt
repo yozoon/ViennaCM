@@ -33,7 +33,6 @@ set(
     "${VIENNALS_INCLUDE_DIRS}" 
     "${VIENNARAY_INCLUDE_DIRS}"
     "${${PROJECT_NAME}_SOURCE_DIR}/include" 
-    "${${PROJECT_NAME}_SOURCE_DIR}/include/cellSet" 
     )
 
 
