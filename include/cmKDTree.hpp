@@ -40,10 +40,9 @@
 #include <omp.h>
 #endif
 
-#include "cmBoundedPQueue.hpp"
-#include "cmClampedPQueue.hpp"
 #include "cmInternal.hpp"
 #include "cmPointLocator.hpp"
+#include "cmQueues.hpp"
 
 template <class NumericType, int D, int Dim = D>
 class cmKDTree : cmPointLocator<NumericType, D, Dim> {

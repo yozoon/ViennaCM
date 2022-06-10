@@ -7,14 +7,14 @@
 
 #include <rayUtil.hpp>
 
-template <typename NumericType, int D> class cmRTBoundary {
+template <typename NumericType, int D> class cmRayBoundary {
   typedef std::array<std::array<NumericType, 3>, 2> boundingBoxType;
 
   RTCGeometry mRtcBoundary = nullptr;
   const boundingBoxType mbdBox;
 
 public:
-  cmRTBoundary(RTCDevice &pDevice, const boundingBoxType &pBoundingBox)
+  cmRayBoundary(RTCDevice &pDevice, const boundingBoxType &pBoundingBox)
       : mbdBox(pBoundingBox) {
     initBoundary(pDevice);
   }

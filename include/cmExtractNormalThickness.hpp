@@ -12,7 +12,7 @@
 #include <rayGeometry.hpp>
 #include <rayUtil.hpp>
 
-#include "cmRTBoundary.hpp"
+#include "cmRayBoundary.hpp"
 
 template <class NumericType, int D> class cmExtractNormalThickness {
   typedef lsSmartPointer<lsMesh<NumericType>> MeshPtr;
@@ -79,7 +79,7 @@ public:
 
     initMemoryFlags();
 
-    auto mBoundary = cmRTBoundary<NumericType, D>(mDevice, boundingBox);
+    auto mBoundary = cmRayBoundary<NumericType, D>(mDevice, boundingBox);
 
     auto rtcScene = rtcNewScene(mDevice);
 

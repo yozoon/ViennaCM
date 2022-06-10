@@ -139,7 +139,7 @@ private:
   }
 
   rayTriple<rayTriple<NumericType>> getTriangleCoords(const size_t primID) {
-    assert(primID < numTriangles && "rtBounday: primID out of bounds");
+    assert(primID < numTriangles && "cmRayBounday: primID out of bounds");
     auto tt = mTriangleBuffer[primID];
     return {(NumericType)mVertexBuffer[tt.v0].xx,
             (NumericType)mVertexBuffer[tt.v0].yy,
