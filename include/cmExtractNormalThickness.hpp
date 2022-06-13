@@ -12,7 +12,7 @@
 #include <rayGeometry.hpp>
 #include <rayUtil.hpp>
 
-#include "cmRayBoundary.hpp"
+#include <cmRayBoundary.hpp>
 
 template <class NumericType, int D> class cmExtractNormalThickness {
   typedef lsSmartPointer<lsMesh<NumericType>> MeshPtr;

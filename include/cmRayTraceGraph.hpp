@@ -11,22 +11,29 @@
 #include <rayTraceDirection.hpp>
 #include <rayTracingData.hpp>
 
-#include "cmRaySampler.hpp"
-#include "cmRaySourceGeometry.hpp"
-#include "cmRayTraceGraphKernel.hpp"
+#include <cmGraphBuilder.hpp>
+#include <cmGraphData.hpp>
+#include <cmRaySampler.hpp>
+#include <cmRaySourceGeometry.hpp>
+#include <cmRayTraceGraphKernel.hpp>
 
-template <class NumericType, int D> class cmRayTraceGraph {
+template <typename NumericType, int D, typename GraphNumericType = NumericType>
+class cmRayTraceGraph {
 private:
   RTCDevice mDevice;
-  cmRaySampler<NumericType, D> &mSampler;
   rayGeometry<NumericType, D> mGeometry;
+  cmRaySampler<NumericType, D> &mSampler;
+  std::unique_ptr<cmAbstractGraphBuilder<NumericType, GraphNumericType>>
+      mBuilder = nullptr;
   NumericType mDiskRadius = 0;
   NumericType mGridDelta = 0;
   rayTraceBoundary mBoundaryConds[D] = {};
   rayTraceDirection mSourceDirection = rayTraceDirection::POS_Z;
-  rayTraceInfo mRTInfo;
   bool mUseRandomSeeds = false;
   size_t mRunNumber = 0;
+  cmGraphData<GraphNumericType> mLocalGraphData;
+  rayTracingData<NumericType> *mGlobalData = nullptr;
+  rayTraceInfo mRTInfo;
 
 public:
   cmRayTraceGraph(cmRaySampler<NumericType, D> &pSampler)
@@ -37,16 +44,9 @@ public:
     rtcReleaseDevice(mDevice);
   }
 
-  /// Run the ray tracer
-  std::tuple<
-      lsSmartPointer<std::vector<std::array<NumericType, 3>>>,
-      lsSmartPointer<std::vector<long>>, lsSmartPointer<std::vector<float>>,
-      lsSmartPointer<std::vector<float>>, lsSmartPointer<std::vector<float>>,
-      lsSmartPointer<std::vector<float>>>
-  apply() {
-    if (checkSettings()) {
-      return {};
-    }
+  void apply() {
+    if (checkSettings())
+      return;
 
     initMemoryFlags();
     auto boundingBox = mGeometry.getBoundingBox();
@@ -60,35 +60,26 @@ public:
     auto source = cmRaySourceGeometry<NumericType, D>(
         mDevice, boundingBox, mBoundaryConds, traceSettings);
 
+    auto numberOfNodeData = mBuilder->getRequiredNodeDataSize();
+    if (numberOfNodeData) {
+      mLocalGraphData.setNumberOfNodeData(numberOfNodeData);
+      auto numPoints = mGeometry.getNumPoints();
+      auto nodeDataLabes = mBuilder->getNodeDataLabels();
+      for (int i = 0; i < numberOfNodeData; ++i) {
+        mLocalGraphData.setNodeData(i, numPoints, 0., nodeDataLabes[i]);
+      }
+    }
+
     auto tracer =
         cmRayTraceGraphKernel(mDevice, mGeometry, source, boundary, mSampler,
-                              mUseRandomSeeds, ++mRunNumber);
+                              mBuilder, mUseRandomSeeds, ++mRunNumber);
 
-    // tracer.setRayTraceInfo(&mRTInfo);
-    const auto &[edges, edgeLenghts, outboundAngles, inboundAngles,
-                 sourceConnections] = tracer.apply();
+    tracer.setRayTraceInfo(&mRTInfo);
 
-    auto nodes = lsSmartPointer<std::vector<std::array<NumericType, 3>>>::New();
-    nodes->reserve(mGeometry.getNumPoints());
-    for (size_t i = 0; i < mGeometry.getNumPoints(); ++i) {
-      auto p = mGeometry.getPoint(i);
-      nodes->push_back(p);
-    }
-
-    std::array<NumericType, 3> sourceNode{0};
-    for (size_t i = 0; i < 4; ++i) {
-      auto pt = source.getPoint(i);
-      sourceNode[0] += pt[0] / 4;
-      sourceNode[1] += pt[1] / 4;
-      sourceNode[2] += pt[2] / 4;
-    }
-    nodes->push_back(sourceNode);
+    tracer.apply();
 
     source.releaseGeometry();
     boundary.releaseGeometry();
-
-    return {nodes,          edges,         edgeLenghts,
-            outboundAngles, inboundAngles, sourceConnections};
   }
 
   /// Set the ray tracing geometry
@@ -104,6 +95,18 @@ public:
     mGridDelta = gridDelta;
     mDiskRadius = rayInternal::DiskFactor * mGridDelta;
     mGeometry.initGeometry(mDevice, points, normals, mDiskRadius);
+  }
+
+  /// Set the graph builder type used for ray tracing
+  /// The graph builder is a user defined object that has to interface the
+  /// cmGraphBuilder class.
+  template <typename BuilderType>
+  void setGraphBuilderType(std::unique_ptr<BuilderType> &p) {
+    static_assert(
+        std::is_base_of<cmAbstractGraphBuilder<NumericType, GraphNumericType>,
+                        BuilderType>::value &&
+        "Graph Builder object does not interface correct class");
+    mBuilder = p->clone();
   }
 
   /// Set material ID's for each geometry point.
@@ -128,10 +131,20 @@ public:
     mSourceDirection = pDirection;
   }
 
+  cmGraphData<GraphNumericType> &getLocalGraphData() { return mLocalGraphData; }
+
+  rayTracingData<NumericType> *getGlobalData() { return mGlobalData; }
+
+  void setGlobalData(rayTracingData<NumericType> &data) { mGlobalData = &data; }
+
   rayTraceInfo getRayTraceInfo() { return mRTInfo; }
 
 private:
   int checkSettings() {
+    if (mBuilder == nullptr) {
+
+      return 1;
+    }
     if (mGeometry.checkGeometryEmpty()) {
       rayMessage::getInstance().addError(
           "No geometry was passed to rayTrace. Aborting.");

@@ -8,9 +8,8 @@
 #include <lsMesh.hpp>
 #include <lsSmartPointer.hpp>
 
-#include "cmPointLocator.hpp"
-
-#include "cmKDTree.hpp"
+#include <cmKDTree.hpp>
+#include <cmPointLocator.hpp>
 
 template <class NumericType, int D,
           class LocatorType = cmKDTree<NumericType, D, 3>>

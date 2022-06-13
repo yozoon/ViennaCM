@@ -52,6 +52,8 @@ public:
 
   int getSourceDir() const { return sourceDir; }
 
+  int getPosNeg() const { return posNeg; }
+
   boundingBoxType getBoundingBox() const { return mbdBox; }
 
   rayTriple<NumericType> getPoint(const unsigned int primID) const {

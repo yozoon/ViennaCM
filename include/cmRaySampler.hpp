@@ -10,6 +10,12 @@
 template <class NumericType, int D> class cmRaySampler {
 public:
   virtual unsigned getNumberOfRaysPerPoint() const = 0;
+
+  // Ray direction initialization. This function is called multiple times
+  // (determined by numberOfRaysPerPoint) for every point on the geometry. Given
+  // the normal vector and the index of this particular sampling request, the
+  // function should return the direction in which the ray should be cast from
+  // this particular surface point.
   virtual rayTriple<NumericType>
   getDirection(rayRNG &RNG, const rayTriple<NumericType> &surfaceNormal,
                const size_t dirIdx) const = 0;

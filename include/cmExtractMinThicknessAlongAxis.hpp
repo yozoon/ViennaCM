@@ -6,8 +6,8 @@
 #include <limits>
 #include <type_traits>
 
-#include "cmKDTree.hpp"
-#include "cmPointLocator.hpp"
+#include <cmKDTree.hpp>
+#include <cmPointLocator.hpp>
 
 // Extracts
 template <class T, int D, class LocatorType = cmKDTree<T, D, 1>>

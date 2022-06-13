@@ -8,8 +8,8 @@
 
 #include <lsSmartPointer.hpp>
 
-#include "cmKDTree.hpp"
-#include "cmPointLocator.hpp"
+#include <cmKDTree.hpp>
+#include <cmPointLocator.hpp>
 
 template <class T, int D, class VectorType = std::array<T, 3>>
 struct cmPointCloudSimilarityScore {

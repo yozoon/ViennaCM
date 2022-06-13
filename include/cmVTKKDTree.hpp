@@ -10,8 +10,8 @@
 #include <vtkPoints.h>
 #include <vtkSmartPointer.h>
 
-#include "cmInternal.hpp"
-#include "cmPointLocator.hpp"
+#include <cmInternal.hpp>
+#include <cmPointLocator.hpp>
 
 template <class NumericType, int D, int Dim = D>
 class cmVTKKDTree : cmPointLocator<NumericType, D, Dim> {
