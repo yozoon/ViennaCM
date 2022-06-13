@@ -34,7 +34,7 @@ public:
                            NumericType passedGridDelta,
                            bool passedIsAdditive = true)
       : mDevice(rtcNewDevice("hugepages=1")), mGridDelta(passedGridDelta),
-        mDiskRadius(mGridDelta * rayInternal::DiskFactor),
+        mDiskRadius(mGridDelta * rayInternal::DiskFactor<D>),
         baseMesh(passedBaseMesh), secondMesh(passedSecondMesh),
         isAdditive(passedIsAdditive) {}
 
