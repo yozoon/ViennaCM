@@ -148,7 +148,7 @@ public:
 
   void setEdgeData(int num, std::vector<NumericType> &vector,
                    std::string label = "edgeData") {
-    if (num >= nodeData.size())
+    if (num >= edgeData.size())
       lsMessage::getInstance()
           .addError("Setting edge data in cmGraphData out of range.")
           .print();
@@ -158,7 +158,7 @@ public:
 
   void setEdgeData(int num, std::vector<NumericType> &&vector,
                    std::string label = "edgeData") {
-    if (num >= nodeData.size())
+    if (num >= edgeData.size())
       lsMessage::getInstance()
           .addError("Setting edge data in cmGraphData out of range.")
           .print();

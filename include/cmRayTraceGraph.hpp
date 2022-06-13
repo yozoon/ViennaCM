@@ -70,6 +70,16 @@ public:
       }
     }
 
+    auto numberOfEdgeData = mBuilder->getRequiredEdgeDataSize();
+    if (numberOfEdgeData) {
+      mLocalGraphData.setNumberOfEdgeData(numberOfEdgeData);
+      auto numPoints = mGeometry.getNumPoints();
+      auto edgeDataLabels = mBuilder->getEdgeDataLabels();
+      for (int i = 0; i < numberOfEdgeData; ++i) {
+        mLocalGraphData.setEdgeData(i, {}, edgeDataLabels[i]);
+      }
+    }
+
     auto tracer =
         cmRayTraceGraphKernel(mDevice, mGeometry, source, boundary, mSampler,
                               mBuilder, mUseRandomSeeds, ++mRunNumber);
