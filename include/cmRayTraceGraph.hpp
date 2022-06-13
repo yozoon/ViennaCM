@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 #include <embree3/rtcore.h>
 
 #include <lsSmartPointer.hpp>
@@ -63,7 +65,7 @@ public:
     auto numberOfNodeData = mBuilder->getRequiredNodeDataSize();
     if (numberOfNodeData) {
       mLocalGraphData.setNumberOfNodeData(numberOfNodeData);
-      auto numPoints = mGeometry.getNumPoints();
+      auto numPoints = mGeometry.getNumPoints() + 1;
       auto nodeDataLabes = mBuilder->getNodeDataLabels();
       for (int i = 0; i < numberOfNodeData; ++i) {
         mLocalGraphData.setNodeData(i, numPoints, 0., nodeDataLabes[i]);
@@ -73,7 +75,6 @@ public:
     auto numberOfEdgeData = mBuilder->getRequiredEdgeDataSize();
     if (numberOfEdgeData) {
       mLocalGraphData.setNumberOfEdgeData(numberOfEdgeData);
-      auto numPoints = mGeometry.getNumPoints();
       auto edgeDataLabels = mBuilder->getEdgeDataLabels();
       for (int i = 0; i < numberOfEdgeData; ++i) {
         mLocalGraphData.setEdgeData(i, {}, edgeDataLabels[i]);
@@ -88,6 +89,28 @@ public:
     tracer.setRayTraceInfo(&mRTInfo);
 
     tracer.apply();
+
+    // Add point coordinates to the graph data
+    auto &nodes = mLocalGraphData.getNodes();
+    nodes.reserve(mGeometry.getNumPoints() + 1);
+    for (size_t i = 0; i < mGeometry.getNumPoints(); ++i) {
+      const auto &point = mGeometry.getPoint(i);
+      nodes.push_back(std::array<GraphNumericType, 3>{
+          static_cast<GraphNumericType>(point[0]),
+          static_cast<GraphNumericType>(point[1]),
+          static_cast<GraphNumericType>(point[2]),
+      });
+    }
+
+    std::array<GraphNumericType, 3> sourceNode{0};
+    for (size_t i = 0; i < 4; ++i) {
+      auto pt = source.getPoint(i);
+      sourceNode[0] += pt[0] / 4;
+      sourceNode[1] += pt[1] / 4;
+      sourceNode[2] += pt[2] / 4;
+    }
+
+    nodes.push_back(sourceNode);
 
     source.releaseGeometry();
     boundary.releaseGeometry();

@@ -36,7 +36,7 @@ public:
   virtual void sourceCollision(
       const unsigned int fromID, const rayTriple<NumericType> &rayOrigin,
       const rayTriple<NumericType> &rayDir,
-      const rayTriple<NumericType> &geomNormal,
+      const rayTriple<NumericType> &geomNormal, const unsigned int sourceID,
       const rayTriple<NumericType> &sourceCenter, const unsigned int sourceDir,
       const unsigned int posNeg, cmGraphData<GraphNumericType> &localGraphData,
       const rayTracingData<NumericType> *globalData, rayRNG &Rng) = 0;
@@ -72,7 +72,7 @@ public:
   virtual void sourceCollision(
       const unsigned int fromID, const rayTriple<NumericType> &rayOrigin,
       const rayTriple<NumericType> &rayDir,
-      const rayTriple<NumericType> &geomNormal,
+      const rayTriple<NumericType> &geomNormal, const unsigned int sourceID,
       const rayTriple<NumericType> &sourceCenter, const unsigned int sourceDir,
       const unsigned int posNeg, cmGraphData<GraphNumericType> &localGraphData,
       const rayTracingData<NumericType> *globalData, rayRNG &Rng) override {}
@@ -107,9 +107,6 @@ public:
                         cmGraphData<GraphNumericType> &localGraphData,
                         const rayTracingData<NumericType> *globalData,
                         rayRNG &Rng) override final {
-    // myLocalEdges[2 * dataIndex] = idx;
-    // myLocalEdges[2 * dataIndex + 1] = primID;
-
     localGraphData.addEdge(fromID, toID);
 
     // Edge length
@@ -142,26 +139,21 @@ public:
                        const rayTriple<NumericType> &rayOrigin,
                        const rayTriple<NumericType> &rayDir,
                        const rayTriple<NumericType> &geomNormal,
+                       const unsigned int sourceID,
                        const rayTriple<NumericType> &sourceCenter,
                        const unsigned int sourceDir, const unsigned int posNeg,
                        cmGraphData<GraphNumericType> &localGraphData,
                        const rayTracingData<NumericType> *globalData,
                        rayRNG &Rng) override final {
-    // myLocalEdges[2 * dataIndex] = idx;
-    // myLocalEdges[2 * dataIndex + 1] = mGeometry.getNumPoints();
-    // The source ID is set to -1
-    localGraphData.addEdge(fromID, -1);
+    localGraphData.addEdge(fromID, sourceID);
 
     // Edge length
-    // myLocalEdgeLengths[dataIndex] =
-    //     std::abs(rayOrigin[sourceDir] - sourceCenter[sourceDir]);
     localGraphData.pushBackEdgeData(
         0, std::abs(rayOrigin[sourceDir] - sourceCenter[sourceDir]));
 
     // Outbound angle
     GraphNumericType outboundDot = std::min(
         std::max(rayInternal::DotProduct(geomNormal, rayDir), -1.), 1.);
-    // myLocalOutboundAngles[dataIndex] = std::acos(outboundDot);
     localGraphData.pushBackEdgeData(1, std::acos(outboundDot));
 
     // Inbound angle
@@ -170,11 +162,9 @@ public:
     sourceNormal[sourceDir] = posNeg;
     GraphNumericType inboundDot = std::min(
         std::max(rayInternal::DotProduct(sourceNormal, invRayDir), -1.), 1.);
-    // myLocalInboundAngles[dataIndex] = std::acos(inboundDot);
     localGraphData.pushBackEdgeData(2, std::acos(inboundDot));
 
     // Source connection
-    // myLocalSourceConnection[dataIndex] = 1;
     localGraphData.pushBackEdgeData(3, 1.);
   }
 

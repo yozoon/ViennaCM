@@ -19,6 +19,7 @@
 
 #define PRINT_PROGRESS false
 #define PRINT_RESULT false
+#define MULTI_INTERCEPT true
 
 template <typename NumericType, int D, typename GraphNumericType = NumericType>
 class cmRayTraceGraphKernel {
@@ -113,6 +114,7 @@ shared(threadLocalGraphData)
 
       const int sourceDir = mSource.getSourceDir();
       const int sourcePosNeg = mSource.getPosNeg();
+      const int sourceColID = mGeometry.getNumPoints();
 
       const auto &sourceCenter = mSource.getSourceCenter();
       const auto &sourceNormal = mSource.getSourceNormal();
@@ -159,9 +161,9 @@ shared(threadLocalGraphData)
 
             /* -------- Boundary hit -------- */
             if (rayHit.hit.geomID == boundaryID) {
-              mBoundary.processHit(rayHit, active);
-              // break;
-              continue;
+              // TODO: Properly handle boundary hits!
+              // mBoundary.processHit(rayHit, active);
+              break;
             }
 
             const auto primID = rayHit.hit.primID;
@@ -170,44 +172,25 @@ shared(threadLocalGraphData)
             /* ------- Source Plane Hit ----- */
             if (rayHit.hit.geomID == sourceID) {
               builder->sourceCollision(idx, rayOrigin, rayDir, geomNormal,
-                                       sourceCenter, sourceDir, sourcePosNeg,
-                                       myLocalGraphData, globalData, RngState5);
+                                       sourceColID, sourceCenter, sourceDir,
+                                       sourcePosNeg, myLocalGraphData,
+                                       globalData, RngState5);
               break;
             }
 
             /* -------- Hit from back -------- */
             if (rayInternal::DotProduct(rayDir, geomNormal) > 0) {
-              // If the dot product of the ray direction and the surface normal
-              // is greater than zero, then we hit the back face of the disk.
-              if (hitFromBack) {
-                // if hitFromback == true, then the ray hits the back of a disk
-                // the second time. In this case we ignore the ray.
-                break;
-              }
-
-              hitFromBack = true;
-              const rtcNumericType xx = ray.org_x + ray.dir_x * ray.tfar;
-              const rtcNumericType yy = ray.org_y + ray.dir_y * ray.tfar;
-              const rtcNumericType zz = ray.org_z + ray.dir_z * ray.tfar;
-
-              // Let ray through, i.e., continue.
-#ifdef ARCH_X86
-              reinterpret_cast<__m128 &>(rayHit.ray) =
-                  _mm_set_ps(1e-4f, zz, yy, xx);
-#else
-              rayHit.ray.org_x = xx;
-              rayHit.ray.org_y = yy;
-              rayHit.ray.org_z = zz;
-              rayHit.ray.tnear = 1e-4f;
-#endif
-              // keep ray direction as it is
-              continue;
+              // If the dot product of the ray direction and the surface
+              // normal is greater than zero, then we hit the back face of the
+              // disk. Here we discard such hits.
+              break;
             }
 
             /* -------- Surface hit -------- */
             assert(rayHit.hit.geomID == geometryID &&
                    "Geometry hit ID invalid");
             ++geohitc;
+#if MULTI_INTERCEPT
             std::vector<unsigned int> hitDiskIds(1, rayHit.hit.primID);
 
             // check for additional intersections
@@ -228,6 +211,11 @@ shared(threadLocalGraphData)
                                         matID, myLocalGraphData, globalData,
                                         RngState5);
             }
+#else
+            const auto matID = mGeometry.getMaterialId(primID);
+            builder->surfaceCollision(idx, ray, geomNormal, primID, matID,
+                                      myLocalGraphData, globalData, RngState5);
+#endif
             // Stop after this one iteration (we don't use any reflections)
             break;
           } while (active);

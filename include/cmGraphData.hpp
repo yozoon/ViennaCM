@@ -166,6 +166,14 @@ public:
     edgeDataLabels[num] = label;
   }
 
+  // Node getters
+
+  std::vector<std::array<NumericType, 3>> &getNodes() { return nodes; }
+
+  const std::vector<std::array<NumericType, 3>> &getNodes() const {
+    return nodes;
+  }
+
   // Edge getters
 
   std::vector<long> &getEdges() { return edges; }

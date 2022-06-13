@@ -3,9 +3,11 @@
 #include <lsReader.hpp>
 #include <lsSmartPointer.hpp>
 #include <lsToDiskMesh.hpp>
+#include <lsVTKWriter.hpp>
 
 #include <cmGraphBuilder.hpp>
 #include <cmGraphData.hpp>
+#include <cmGraphWriter.hpp>
 #include <cmRayTraceGraph.hpp>
 
 int main() {
@@ -22,12 +24,15 @@ int main() {
 
   lsToDiskMesh<NumericType, D>(dom, diskMesh).apply();
 
+  lsVTKWriter<NumericType>(diskMesh, "mesh.vtp").apply();
+
   // ray tracing setup
   rayTraceBoundary rtBC[D];
   for (unsigned i = 0; i < D; ++i)
     rtBC[i] = rayTraceBoundary::REFLECTIVE;
 
-  cmRandomRaySampler<NumericType, D> sampler(numRaysPerPoint);
+  // cmRandomRaySampler<NumericType, D> sampler(numRaysPerPoint);
+  cmUniformRaySampler<NumericType, D> sampler(numRaysPerPoint);
   cmRayTraceGraph<NumericType, D, GraphNumericType> tracer(sampler);
 
   tracer.setSourceDirection(D == 2 ? rayTraceDirection::POS_Y
@@ -50,5 +55,14 @@ int main() {
 
   auto graphData = tracer.getLocalGraphData();
 
-  std::cout << graphData.getEdges().size() << std::endl;
+  // Indicate that the last node is the source node
+  graphData.getNodeData(0).back() = 1.;
+
+  std::cout << "Number of nodes: " << graphData.getNodes().size()
+            << "\nNumber of edges: " << graphData.getEdges().size() / 2
+            << std::endl;
+
+  cmGraphWriter<GraphNumericType>(
+      lsSmartPointer<decltype(graphData)>::New(graphData), "graph.vtp")
+      .apply();
 }
