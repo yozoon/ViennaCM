@@ -22,10 +22,6 @@ int main() {
 
   lsToDiskMesh<NumericType, D>(dom, diskMesh).apply();
 
-  auto points = diskMesh->getNodes();
-  auto normals = *diskMesh->getCellData().getVectorData("Normals");
-  auto materialIds = *diskMesh->getCellData().getScalarData("MaterialIds");
-
   // ray tracing setup
   rayTraceBoundary rtBC[D];
   for (unsigned i = 0; i < D; ++i)
@@ -42,6 +38,13 @@ int main() {
       cmGeometricGraphBuilder<NumericType, GraphNumericType>>();
 
   tracer.setGraphBuilderType(builder);
+
+  auto points = diskMesh->getNodes();
+  auto normals = *diskMesh->getCellData().getVectorData("Normals");
+  auto materialIds = *diskMesh->getCellData().getScalarData("MaterialIds");
+
+  tracer.setGeometry(points, normals, dom->getGrid().getGridDelta());
+  tracer.setMaterialIds(materialIds);
 
   tracer.apply();
 

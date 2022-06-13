@@ -74,6 +74,7 @@ public:
         cmRayTraceGraphKernel(mDevice, mGeometry, source, boundary, mSampler,
                               mBuilder, mUseRandomSeeds, ++mRunNumber);
 
+    tracer.setTracingData(&mLocalGraphData, mGlobalData);
     tracer.setRayTraceInfo(&mRTInfo);
 
     tracer.apply();
