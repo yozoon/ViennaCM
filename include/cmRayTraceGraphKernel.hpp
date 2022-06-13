@@ -240,21 +240,20 @@ shared(threadLocalGraphData)
     // Merge node data
     if (!localGraphData->getNodeData().empty()) {
     }
+
     // Merge edges. Edges and edge data are always appended
-    if (!localGraphData->getEdges().empty()) {
-      localGraphData->getEdges().clear();
-      for (int k = 0; k < numThreads; ++k) {
-        localGraphData->appendEdges(threadLocalGraphData[k].getEdges());
-      }
-      // Merge edge data
-      if (!localGraphData->getEdgeData().empty()) {
+    localGraphData->getEdges().clear();
+    for (int k = 0; k < numThreads; ++k) {
+      localGraphData->appendEdges(threadLocalGraphData[k].getEdges());
+    }
+    // Merge edge data
+    if (!localGraphData->getEdgeData().empty()) {
 #pragma omp parallel for
-        for (int i = 0; i < localGraphData->getEdgeData().size(); ++i) {
-          localGraphData->getEdgeData(i).clear();
-          for (int k = 0; k < numThreads; ++k) {
-            localGraphData->appendEdgeData(
-                i, threadLocalGraphData[k].getEdgeData(i));
-          }
+      for (int i = 0; i < localGraphData->getEdgeData().size(); ++i) {
+        localGraphData->getEdgeData(i).clear();
+        for (int k = 0; k < numThreads; ++k) {
+          localGraphData->appendEdgeData(
+              i, threadLocalGraphData[k].getEdgeData(i));
         }
       }
     }
