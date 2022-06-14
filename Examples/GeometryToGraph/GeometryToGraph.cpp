@@ -5,10 +5,11 @@
 #include <lsToDiskMesh.hpp>
 #include <lsVTKWriter.hpp>
 
-#include <cmGraphBuilder.hpp>
 #include <cmGraphData.hpp>
 #include <cmGraphWriter.hpp>
 #include <cmRayTraceGraph.hpp>
+
+#include "GraphBuilder.hpp"
 
 int main() {
   using NumericType = double;
@@ -31,16 +32,16 @@ int main() {
   for (unsigned i = 0; i < D; ++i)
     rtBC[i] = rayTraceBoundary::REFLECTIVE;
 
-  // cmRandomRaySampler<NumericType, D> sampler(numRaysPerPoint);
-  cmUniformRaySampler<NumericType, D> sampler(numRaysPerPoint);
+  cmRandomRaySampler<NumericType, D> sampler(numRaysPerPoint);
+  // cmUniformRaySampler<NumericType, D> sampler(numRaysPerPoint);
   cmRayTraceGraph<NumericType, D, GraphNumericType> tracer(sampler);
 
   tracer.setSourceDirection(D == 2 ? rayTraceDirection::POS_Y
                                    : rayTraceDirection::POS_Z);
   tracer.setBoundaryConditions(rtBC);
 
-  auto builder = std::make_unique<
-      cmGeometricGraphBuilder<NumericType, GraphNumericType>>();
+  auto builder =
+      std::make_unique<GraphBuilder<NumericType, GraphNumericType>>();
 
   tracer.setGraphBuilderType(builder);
 
