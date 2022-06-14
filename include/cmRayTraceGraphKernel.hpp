@@ -19,7 +19,7 @@
 
 #define PRINT_PROGRESS false
 #define PRINT_RESULT false
-#define MULTI_INTERCEPT true
+// #define MULTI_INTERSECT
 
 template <typename NumericType, int D, typename GraphNumericType = NumericType>
 class cmRayTraceGraphKernel {
@@ -190,7 +190,7 @@ shared(threadLocalGraphData)
             assert(rayHit.hit.geomID == geometryID &&
                    "Geometry hit ID invalid");
             ++geohitc;
-#if MULTI_INTERCEPT
+#ifdef MULTI_INTERSECT
             std::vector<unsigned int> hitDiskIds(1, rayHit.hit.primID);
 
             // check for additional intersections
