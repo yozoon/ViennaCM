@@ -66,4 +66,8 @@ int main() {
   cmGraphWriter<GraphNumericType>(
       lsSmartPointer<decltype(graphData)>::New(graphData), "graph.vtp")
       .apply();
+
+  cmGraphWriter<GraphNumericType>(
+      lsSmartPointer<decltype(graphData)>::New(graphData), "graph")
+      .apply();
 }

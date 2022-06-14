@@ -19,7 +19,6 @@
 
 #define PRINT_PROGRESS false
 #define PRINT_RESULT false
-// #define MULTI_INTERSECT
 
 template <typename NumericType, int D, typename GraphNumericType = NumericType>
 class cmRayTraceGraphKernel {
