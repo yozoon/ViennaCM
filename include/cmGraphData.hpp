@@ -87,6 +87,13 @@ public:
     edgeData[num].insert(edgeData[num].end(), vec.begin(), vec.end());
   }
 
+  void clear() {
+    nodes.clear();
+    edges.clear();
+    nodeData.clear();
+    edgeData.clear();
+  }
+
   // Add edge
   void addEdge(long i, long j) {
     edges.push_back(i);

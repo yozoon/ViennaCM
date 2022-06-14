@@ -62,6 +62,8 @@ public:
     auto source = cmRaySourceGeometry<NumericType, D>(
         mDevice, boundingBox, mBoundaryConds, traceSettings);
 
+    mLocalGraphData.clear();
+
     auto numberOfNodeData = mBuilder->getRequiredNodeDataSize();
     if (numberOfNodeData) {
       mLocalGraphData.setNumberOfNodeData(numberOfNodeData);
