@@ -33,12 +33,19 @@ public:
                 std::string passedFileName)
       : mGraphData(pGraphData), fileName(passedFileName) {}
 
+  cmGraphWriter(lsSmartPointer<cmGraphData<NumericType>> pGraphData,
+                cmFileFormatEnum pFileFormat, std::string passedFileName)
+      : mGraphData(pGraphData), fileName(passedFileName),
+        fileFormat(pFileFormat) {}
+
   void setGraph(lsSmartPointer<cmGraphData<NumericType>> pGraphData) {
     mGraphData = pGraphData;
   }
 
   /// set file name for file to write
-  void setFileName(std::string passedFileName) { fileName = passedFileName; }
+  void setFileName(std::string pFileName) { fileName = pFileName; }
+
+  void setFileFormat(cmFileFormatEnum pFileFormat) { fileFormat = pFileFormat; }
 
   void writeVTK() {
     auto mesh = lsSmartPointer<lsMesh<NumericType>>::New();
