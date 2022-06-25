@@ -16,7 +16,7 @@ int main() {
   using GraphNumericType = float;
 
   static constexpr int D = 2;
-  static constexpr int numRaysPerPoint = 18;
+  static constexpr int numRaysPerPoint = 6;
 
   auto dom = lsSmartPointer<lsDomain<NumericType, D>>::New();
   lsReader<NumericType, D>(dom, "first.lvst").apply();

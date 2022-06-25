@@ -63,7 +63,7 @@ public:
     rayTriple<rayTriple<NumericType>> basis = {surfaceNormal, t, s};
     for (size_t j = 0; j < D; ++j)
       for (size_t i = 0; i < D; ++i)
-        direction[j] += rayDirection[j] + basis[i][j] * rayDirection[i];
+        direction[j] += basis[i][j] * rayDirection[i];
 
     rayInternal::Normalize(direction);
     return direction;
@@ -82,8 +82,8 @@ private:
       // Uniformly place points on a circle
       for (unsigned i = 0; i < mNumOfRaysPerPoint; ++i) {
         rayDirections.emplace_back(std::array<NumericType, 3>{
-            std::cos(2. * rayInternal::PI * i / mNumOfRaysPerPoint),
-            std::sin(2. * rayInternal::PI * i / mNumOfRaysPerPoint), 0.});
+            std::sin(rayInternal::PI * i / (mNumOfRaysPerPoint - 1)),
+            -std::cos(rayInternal::PI * i / (mNumOfRaysPerPoint - 1)), 0.});
       }
     } else {
       // Uniformly place points on sphere using Fibonacci spiral placement.
@@ -92,8 +92,8 @@ private:
       static constexpr NumericType offset = 0.;
       for (unsigned i = 0; i < mNumOfRaysPerPoint; ++i) {
         NumericType phi =
-            std::acos(1. - 2. * (i + offset) / mNumOfRaysPerPoint);
-        NumericType theta = M_PI * (1. + sqrt5) * (i + offset);
+            std::acos(1. - 2. * (i + offset) / (mNumOfRaysPerPoint - 1));
+        NumericType theta = rayInternal::PI * (1. + sqrt5) * (i + offset) / 2;
         rayDirections.emplace_back(std::array<NumericType, 3>{
             std::cos(theta) * std::sin(phi),
             std::sin(theta) * std::sin(phi),
