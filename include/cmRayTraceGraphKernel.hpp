@@ -200,7 +200,7 @@ shared(threadLocalGraphData)
             assert(rayHit.hit.geomID == geometryID &&
                    "Geometry hit ID invalid");
             ++geohitc;
-#ifdef MULTI_INTERSECT
+
             std::vector<unsigned int> hitDiskIds(1, rayHit.hit.primID);
 
             // check for additional intersections
@@ -221,11 +221,6 @@ shared(threadLocalGraphData)
                                         matID, myLocalGraphData, globalData,
                                         RngState5);
             }
-#else
-            const auto matID = mGeometry.getMaterialId(primID);
-            builder->surfaceCollision(idx, ray, geomNormal, primID, matID,
-                                      myLocalGraphData, globalData, RngState5);
-#endif
             // Stop after this one iteration (we don't use any reflections)
             break;
           } while (active);

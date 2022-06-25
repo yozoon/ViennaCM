@@ -5,7 +5,6 @@ project("GeometryToGraph")
 add_executable(${PROJECT_NAME} ${PROJECT_NAME}.cpp)
 target_include_directories(${PROJECT_NAME} PUBLIC ${VIENNACM_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${VIENNACM_LIBRARIES})
-target_compile_definitions(${PROJECT_NAME} PRIVATE MULTI_INTERSECT)
 
 # Copy files
 file(COPY first.lvst DESTINATION ${PROJECT_BINARY_DIR})

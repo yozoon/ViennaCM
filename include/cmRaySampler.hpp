@@ -63,7 +63,7 @@ public:
     rayTriple<rayTriple<NumericType>> basis = {surfaceNormal, t, s};
     for (size_t j = 0; j < D; ++j)
       for (size_t i = 0; i < D; ++i)
-        direction[j] += basis[i][j] * rayDirection[i];
+        direction[j] += rayDirection[j] + basis[i][j] * rayDirection[i];
 
     rayInternal::Normalize(direction);
     return direction;
@@ -103,35 +103,6 @@ private:
     }
   }
 };
-
-template <class NumericType, int D>
-class cmRandomRaySampler : public cmRaySampler<NumericType, D> {
-  const unsigned mNumOfRaysPerPoint;
-
-public:
-  cmRandomRaySampler(unsigned pNumOfRaysPerPoint)
-      : mNumOfRaysPerPoint(pNumOfRaysPerPoint) {}
-
-  rayTriple<NumericType>
-  getDirection(rayRNG &RNG, const rayTriple<NumericType> &surfaceNormal,
-               const size_t dirIdx) const override {
-    auto randomDirection =
-        rayInternal::PickRandomPointOnUnitSphere<NumericType>(RNG);
-
-    if constexpr (D == 2)
-      randomDirection[2] = 0.;
-
-    rayInternal::Normalize(randomDirection);
-    assert(rayInternal::IsNormalized(randomDirection) &&
-           "cmCosineDistributionRaySampler: New direction is not normalized");
-    return randomDirection;
-  }
-
-  unsigned getNumberOfRaysPerPoint() const override {
-    return mNumOfRaysPerPoint;
-  }
-};
-
 template <class NumericType, int D>
 class cmCosineDistributionRaySampler : public cmRaySampler<NumericType, D> {
   const unsigned mNumOfRaysPerPoint;

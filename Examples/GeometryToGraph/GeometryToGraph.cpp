@@ -32,9 +32,8 @@ int main() {
   for (unsigned i = 0; i < D; ++i)
     rtBC[i] = rayTraceBoundary::REFLECTIVE;
 
-  // cmRandomRaySampler<NumericType, D> sampler(numRaysPerPoint);
-  // cmUniformRaySampler<NumericType, D> sampler(numRaysPerPoint);
-  cmCosineDistributionRaySampler<NumericType, D> sampler(numRaysPerPoint);
+  cmUniformRaySampler<NumericType, D> sampler(numRaysPerPoint);
+  //cmCosineDistributionRaySampler<NumericType, D> sampler(numRaysPerPoint);
   cmRayTraceGraph<NumericType, D, GraphNumericType> tracer(sampler);
 
   tracer.setSourceDirection(D == 2 ? rayTraceDirection::POS_Y
