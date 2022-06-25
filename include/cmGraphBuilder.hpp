@@ -48,6 +48,15 @@ public:
 
   virtual std::vector<std::string> getNodeDataLabels() const = 0;
   virtual std::vector<std::string> getEdgeDataLabels() const = 0;
+
+  virtual constexpr bool connectNeighbors() const = 0;
+
+  virtual void connectNeighbor(
+      const unsigned int fromID, const unsigned int neighborID,
+      const NumericType distance, const rayTriple<NumericType> &geomNormal,
+      const rayTriple<NumericType> &neighborNormal, const int materialId,
+      cmGraphData<GraphNumericType> &localGraphData,
+      const rayTracingData<NumericType> *globalData, rayRNG &Rng) = 0;
 };
 
 /// This CRTP class implements clone() for the derived graph builder class.
@@ -76,6 +85,13 @@ public:
       const rayTriple<NumericType> &sourceCenter, const unsigned int sourceDir,
       const unsigned int posNeg, cmGraphData<GraphNumericType> &localGraphData,
       const rayTracingData<NumericType> *globalData, rayRNG &Rng) override {}
+
+  virtual void connectNeighbor(
+      const unsigned int fromID, const unsigned int neighborID,
+      const NumericType distance, const rayTriple<NumericType> &geomNormal,
+      const rayTriple<NumericType> &neighborNormal, const int materialId,
+      cmGraphData<GraphNumericType> &localGraphData,
+      const rayTracingData<NumericType> *globalData, rayRNG &Rng) override{};
 
   virtual int getRequiredNodeDataSize() const override { return 0; }
   virtual int getRequiredEdgeDataSize() const override { return 0; }

@@ -115,41 +115,50 @@ public:
   rayTriple<NumericType>
   getDirection(rayRNG &RNG, const rayTriple<NumericType> &surfaceNormal,
                const size_t dirIdx) const override {
-    if constexpr (D == 2) {
-      return PickRandomPointOnUnitCircle(RNG);
-    } else {
-      return PickRandomPointOnUnitSphere(RNG);
-    }
+    auto randomDirection =
+        rayInternal::PickRandomPointOnUnitSphere<NumericType>(RNG);
+
+    if constexpr (D == 2)
+      randomDirection[2] = 0.;
+
+    rayInternal::Normalize(randomDirection);
+    assert(rayInternal::IsNormalized(randomDirection) &&
+           "cmCosineDistributionRaySampler: New direction is not normalized");
+    return randomDirection;
   }
 
   unsigned getNumberOfRaysPerPoint() const override {
     return mNumOfRaysPerPoint;
   }
+};
 
-private:
-  static rayTriple<NumericType> PickRandomPointOnUnitSphere(rayRNG &RNG) {
-    std::uniform_real_distribution<NumericType> uniDist;
-    NumericType x, y, z, x2, y2, x2py2;
-    do {
-      x = 2 * uniDist(RNG) - 1.;
-      x2 = x * x;
-      y = 2 * uniDist(RNG) - 1.;
-      y2 = y * y;
-      x2py2 = x2 + y2;
-    } while (x2py2 >= 1.);
-    NumericType tmp = 2 * std::sqrt(1. - x2py2);
-    x *= tmp;
-    y *= tmp;
-    z = 1. - 2 * x2py2;
-    return rayTriple<NumericType>{x, y, z};
+template <class NumericType, int D>
+class cmCosineDistributionRaySampler : public cmRaySampler<NumericType, D> {
+  const unsigned mNumOfRaysPerPoint;
+
+public:
+  cmCosineDistributionRaySampler(unsigned pNumOfRaysPerPoint)
+      : mNumOfRaysPerPoint(pNumOfRaysPerPoint) {}
+
+  rayTriple<NumericType>
+  getDirection(rayRNG &RNG, const rayTriple<NumericType> &surfaceNormal,
+               const size_t dirIdx) const override {
+    auto randomDirection =
+        rayInternal::PickRandomPointOnUnitSphere<NumericType>(RNG);
+    randomDirection[0] += surfaceNormal[0];
+    randomDirection[1] += surfaceNormal[1];
+    if constexpr (D == 3)
+      randomDirection[2] += surfaceNormal[2];
+    else
+      randomDirection[2] = 0;
+
+    rayInternal::Normalize(randomDirection);
+    assert(rayInternal::IsNormalized(randomDirection) &&
+           "cmCosineDistributionRaySampler: New direction is not normalized");
+    return randomDirection;
   }
 
-  static rayTriple<NumericType> PickRandomPointOnUnitCircle(rayRNG &RNG) {
-    std::uniform_real_distribution<NumericType> uniDist;
-    NumericType a, b, x, y, x2, y2, x2py2;
-    NumericType phi = uniDist(RNG) * 2 * M_PI;
-    a = std::cos(phi);
-    b = std::sin(phi);
-    return rayTriple<NumericType>{a, b, 0.};
+  unsigned getNumberOfRaysPerPoint() const override {
+    return mNumOfRaysPerPoint;
   }
 };

@@ -16,7 +16,7 @@ int main() {
   using GraphNumericType = float;
 
   static constexpr int D = 2;
-  static constexpr int numRaysPerPoint = 11;
+  static constexpr int numRaysPerPoint = 18;
 
   auto dom = lsSmartPointer<lsDomain<NumericType, D>>::New();
   lsReader<NumericType, D>(dom, "first.lvst").apply();
@@ -32,8 +32,9 @@ int main() {
   for (unsigned i = 0; i < D; ++i)
     rtBC[i] = rayTraceBoundary::REFLECTIVE;
 
-  cmRandomRaySampler<NumericType, D> sampler(numRaysPerPoint);
+  // cmRandomRaySampler<NumericType, D> sampler(numRaysPerPoint);
   // cmUniformRaySampler<NumericType, D> sampler(numRaysPerPoint);
+  cmCosineDistributionRaySampler<NumericType, D> sampler(numRaysPerPoint);
   cmRayTraceGraph<NumericType, D, GraphNumericType> tracer(sampler);
 
   tracer.setSourceDirection(D == 2 ? rayTraceDirection::POS_Y

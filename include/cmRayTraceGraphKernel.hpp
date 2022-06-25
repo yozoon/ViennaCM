@@ -128,6 +128,17 @@ shared(threadLocalGraphData)
         const auto rayOrigin = mGeometry.getPoint(idx);
         const auto surfaceNormal = mGeometry.getPrimNormal(idx);
 
+        if (builder->connectNeighbors())
+          for (const auto &id : mGeometry.getNeighborIndicies(idx)) {
+            const auto matID = mGeometry.getMaterialId(id);
+            const auto normal = mGeometry.getPrimNormal(id);
+            NumericType distance =
+                rayInternal::Distance(rayOrigin, mGeometry.getPoint(id));
+            builder->connectNeighbor(idx, id, distance, surfaceNormal, normal,
+                                     matID, myLocalGraphData, globalData,
+                                     RngState5);
+          }
+
         for (long dirIdx = 0; dirIdx < numOfRaysPerPoint; ++dirIdx) {
           unsigned dataIndex = numOfRaysPerPoint * idx + dirIdx;
 

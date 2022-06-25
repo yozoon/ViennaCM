@@ -10,6 +10,8 @@ class GraphBuilder
     : public cmGraphBuilder<GraphBuilder<NumericType, GraphNumericType>,
                             NumericType, GraphNumericType> {
 public:
+  constexpr bool connectNeighbors() const override { return true; };
+
   static constexpr char edgeLengthLabel[] = "length";
   static constexpr char edgeOutboundAngleLabel[] = "outboundAngle";
   static constexpr char edgeInboundAngleLabel[] = "inboundAngle";
@@ -26,7 +28,6 @@ public:
     // Edge length
     // TODO: This is only correct for the first intersection. Subsequent
     // intersections (based on neighbors), would have a different length.
-    // myLocalEdgeLengths[dataIndex] = ray.tfar;
     localGraphData.pushBackEdgeData(0, ray.tfar);
 
     rayTriple<NumericType> rayDir{ray.dir_x, ray.dir_y, ray.dir_z};
@@ -35,17 +36,14 @@ public:
     // Outbound angle
     GraphNumericType outboundDot = std::min(
         std::max(rayInternal::DotProduct(geomNormal, rayDir), -1.), 1.);
-    // myLocalOutboundAngles[dataIndex] = std::acos(outboundDot);
     localGraphData.pushBackEdgeData(1, std::acos(outboundDot));
 
     // Inbound angle
     GraphNumericType inboundDot = std::min(
         std::max(rayInternal::DotProduct(geomNormal, invRayDir), -1.), 1.);
-    // myLocalInboundAngles[dataIndex] = std::acos(inboundDot);
     localGraphData.pushBackEdgeData(2, std::acos(inboundDot));
 
     // Source connection
-    // myLocalSourceConnection[dataIndex] = 0;
     localGraphData.pushBackEdgeData(3, 0.);
   }
 
@@ -81,6 +79,39 @@ public:
     // Source connection
     localGraphData.pushBackEdgeData(3, 1.);
   }
+
+  void connectNeighbor(const unsigned int fromID, const unsigned int neighborID,
+                       const NumericType distance,
+                       const rayTriple<NumericType> &geomNormal,
+                       const rayTriple<NumericType> &neighborNormal,
+                       const int materialId,
+                       cmGraphData<GraphNumericType> &localGraphData,
+                       const rayTracingData<NumericType> *globalData,
+                       rayRNG &Rng) override {
+    localGraphData.addEdge(fromID, neighborID);
+
+    // Edge length
+    // TODO: This is only correct for the first intersection. Subsequent
+    // intersections (based on neighbors), would have a different length.
+    localGraphData.pushBackEdgeData(0, distance);
+
+    rayTriple<NumericType> invNeighborNormal{
+        -neighborNormal[0], -neighborNormal[1], -neighborNormal[2]};
+
+    // Outbound angle
+    GraphNumericType outboundDot = std::min(
+        std::max(rayInternal::DotProduct(geomNormal, neighborNormal), -1.), 1.);
+    localGraphData.pushBackEdgeData(1, std::acos(outboundDot));
+
+    // Inbound angle
+    GraphNumericType inboundDot = std::min(
+        std::max(rayInternal::DotProduct(geomNormal, invNeighborNormal), -1.),
+        1.);
+    localGraphData.pushBackEdgeData(2, std::acos(inboundDot));
+
+    // Source connection
+    localGraphData.pushBackEdgeData(3, 0.);
+  };
 
   int getRequiredNodeDataSize() const override final { return 1; }
 
