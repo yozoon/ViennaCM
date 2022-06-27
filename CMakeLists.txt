@@ -5,6 +5,7 @@ project(
   VERSION 0.0.1
   LANGUAGES CXX C)
 
+SET(CMAKE_CXX_STANDARD "17")
 include(GNUInstallDirs)
 
 # set default build type
