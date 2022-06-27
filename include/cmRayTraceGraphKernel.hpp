@@ -27,12 +27,12 @@ public:
       RTCDevice &pDevice, rayGeometry<NumericType, D> &pRTCGeometry,
       cmRaySourceGeometry<NumericType, D> &pRTCSource,
       rayBoundary<NumericType, D> &pRTCBoundary,
-      cmRaySampler<NumericType, D> &pSampler,
+      std::unique_ptr<cmAbstractRaySampler<NumericType, D>> &pSampler,
       std::unique_ptr<cmAbstractGraphBuilder<NumericType, GraphNumericType>>
           &pBuilder,
       const bool pUseRandomSeeds, const size_t pRunNumber)
       : mDevice(pDevice), mGeometry(pRTCGeometry), mSource(pRTCSource),
-        mBoundary(pRTCBoundary), mSampler(pSampler),
+        mBoundary(pRTCBoundary), mSampler(pSampler->clone()),
         mBuilder(pBuilder->clone()), mUseRandomSeeds(pUseRandomSeeds),
         mRunNumber(pRunNumber) {
     assert(rtcGetDeviceProperty(mDevice, RTC_DEVICE_PROPERTY_VERSION) >=
@@ -61,7 +61,7 @@ public:
     assert(rtcGetDeviceError(mDevice) == RTC_ERROR_NONE &&
            "Embree device error");
 
-    const long numOfRaysPerPoint = mSampler.getNumberOfRaysPerPoint();
+    const long numOfRaysPerPoint = mSampler->getNumberOfRaysPerPoint();
 
     size_t geohitc = 0;
     size_t nongeohitc = 0;
@@ -143,7 +143,7 @@ shared(threadLocalGraphData)
           unsigned dataIndex = numOfRaysPerPoint * idx + dirIdx;
 
           auto &ray = rayHit.ray;
-          auto rayDir = mSampler.getDirection(RngState1, surfaceNormal, dirIdx);
+          auto rayDir = mSampler->getDirection(RngState1, surfaceNormal, dirIdx);
 
           // Ensure that the direction is normalized
           rayInternal::Normalize(rayDir);
@@ -350,7 +350,8 @@ private:
   rayGeometry<NumericType, D> &mGeometry;
   cmRaySourceGeometry<NumericType, D> &mSource;
   rayBoundary<NumericType, D> &mBoundary;
-  cmRaySampler<NumericType, D> &mSampler;
+  std::unique_ptr<cmAbstractRaySampler<NumericType, D>> const mSampler =
+      nullptr;
   std::unique_ptr<cmAbstractGraphBuilder<NumericType, GraphNumericType>> const
       mBuilder = nullptr;
   const bool mUseRandomSeeds;

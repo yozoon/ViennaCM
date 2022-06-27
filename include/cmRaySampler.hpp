@@ -7,8 +7,13 @@
 #include <rayRNG.hpp>
 #include <rayUtil.hpp>
 
-template <class NumericType, int D> class cmRaySampler {
+template <class NumericType, int D> class cmAbstractRaySampler {
 public:
+  /// These function must NOT be overwritten by user
+  virtual ~cmAbstractRaySampler() = default;
+  virtual std::unique_ptr<cmAbstractRaySampler> clone() const = 0;
+
+  /// This function must be overwritten by user
   virtual unsigned getNumberOfRaysPerPoint() const = 0;
 
   // Ray direction initialization. This function is called multiple times
@@ -21,8 +26,34 @@ public:
                const size_t dirIdx) const = 0;
 };
 
+/// This CRTP class implements clone() for the derived graph sampler class.
+/// A user has to interface this class.
+template <typename Derived, typename NumericType, int D>
+class cmRaySampler : public cmAbstractRaySampler<NumericType, D> {
+public:
+  std::unique_ptr<cmAbstractRaySampler<NumericType, D>>
+  clone() const override final {
+    return std::make_unique<Derived>(static_cast<Derived const &>(*this));
+  }
+
+  virtual unsigned getNumberOfRaysPerPoint() const override { return 1; };
+
+  virtual rayTriple<NumericType>
+  getDirection(rayRNG &RNG, const rayTriple<NumericType> &surfaceNormal,
+               const size_t dirIdx) const override {
+    return {};
+  }
+
+protected:
+  // Ensure that cmRaySampler class needs to be inherited
+  cmRaySampler() = default;
+  cmRaySampler(const cmRaySampler &) = default;
+  cmRaySampler(cmRaySampler &&) = default;
+};
+
 template <class NumericType, int D>
-class cmUniformRaySampler : public cmRaySampler<NumericType, D> {
+class cmUniformRaySampler
+    : public cmRaySampler<cmUniformRaySampler<NumericType, D>, NumericType, D> {
   const unsigned mNumOfRaysPerPoint;
 
   std::vector<std::array<NumericType, 3>> rayDirections;
@@ -104,7 +135,9 @@ private:
   }
 };
 template <class NumericType, int D>
-class cmCosineDistributionRaySampler : public cmRaySampler<NumericType, D> {
+class cmCosineDistributionRaySampler
+    : public cmRaySampler<cmCosineDistributionRaySampler<NumericType, D>,
+                          NumericType, D> {
   const unsigned mNumOfRaysPerPoint;
 
 public:

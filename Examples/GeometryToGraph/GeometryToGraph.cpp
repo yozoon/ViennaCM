@@ -1,3 +1,4 @@
+#include <memory>
 
 #include <lsDomain.hpp>
 #include <lsReader.hpp>
@@ -32,9 +33,10 @@ int main() {
   for (unsigned i = 0; i < D; ++i)
     rtBC[i] = rayTraceBoundary::REFLECTIVE;
 
-  cmUniformRaySampler<NumericType, D> sampler(numRaysPerPoint);
+  auto sampler =
+      std::make_unique<cmUniformRaySampler<NumericType, D>>(numRaysPerPoint);
   // cmCosineDistributionRaySampler<NumericType, D> sampler(numRaysPerPoint);
-  cmRayTraceGraph<NumericType, D, GraphNumericType> tracer(sampler);
+  cmRayTraceGraph<NumericType, D, GraphNumericType> tracer;
 
   tracer.setSourceDirection(D == 2 ? rayTraceDirection::POS_Y
                                    : rayTraceDirection::POS_Z);
@@ -44,6 +46,7 @@ int main() {
       std::make_unique<GraphBuilder<NumericType, GraphNumericType>>();
 
   tracer.setGraphBuilderType(builder);
+  tracer.setGraphSamplerType(sampler);
 
   auto points = diskMesh->getNodes();
   auto normals = *diskMesh->getCellData().getVectorData("Normals");

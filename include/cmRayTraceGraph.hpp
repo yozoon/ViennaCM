@@ -24,7 +24,7 @@ class cmRayTraceGraph {
 private:
   RTCDevice mDevice;
   rayGeometry<NumericType, D> mGeometry;
-  cmRaySampler<NumericType, D> &mSampler;
+  std::unique_ptr<cmAbstractRaySampler<NumericType, D>> mSampler = nullptr;
   std::unique_ptr<cmAbstractGraphBuilder<NumericType, GraphNumericType>>
       mBuilder = nullptr;
   NumericType mDiskRadius = 0;
@@ -38,8 +38,7 @@ private:
   rayTraceInfo mRTInfo;
 
 public:
-  cmRayTraceGraph(cmRaySampler<NumericType, D> &pSampler)
-      : mDevice(rtcNewDevice("hugepages=1")), mSampler(pSampler) {}
+  cmRayTraceGraph() : mDevice(rtcNewDevice("hugepages=1")) {}
 
   ~cmRayTraceGraph() {
     mGeometry.releaseGeometry();
@@ -143,6 +142,17 @@ public:
                         BuilderType>::value &&
         "Graph Builder object does not interface correct class");
     mBuilder = p->clone();
+  }
+
+  /// Set the graph sampler type used for ray tracing
+  /// The graph sampler is a user defined object that has to interface the
+  /// cmGraphSampler class.
+  template <typename SamplerType>
+  void setGraphSamplerType(std::unique_ptr<SamplerType> &p) {
+    static_assert(std::is_base_of<cmAbstractRaySampler<NumericType, D>,
+                                  SamplerType>::value &&
+                  "Ray Sampler object does not interface correct class");
+    mSampler = p->clone();
   }
 
   /// Set material ID's for each geometry point.
