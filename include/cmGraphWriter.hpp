@@ -9,13 +9,22 @@
 #include <lsSmartPointer.hpp>
 #include <lsVTKWriter.hpp>
 
+#ifdef WITH_MSGPACK
+#include <msgpack.hpp>
+#ifdef WITH_GZIP
+#include <cmGzipStreams.hpp>
+#endif
+#endif
+
 #include <cmGraphData.hpp>
 
 enum cmFileFormatEnum : unsigned {
   VTK_LEGACY = 0,
   VTP = 1,
   MULTI = 2,
-  AUTO = 3,
+  MSGPACK = 3,
+  MSGPACK_GZIP = 4,
+  AUTO = 5,
 };
 
 template <class NumericType> class cmGraphWriter {
@@ -155,7 +164,7 @@ public:
       // From and to
       edgeFile << edges[2 * i] << "," << edges[2 * i + 1];
       // Edge data
-      if (!nodeDataIterators.empty())
+      if (!edgeDataIterators.empty())
         for (auto &it : edgeDataIterators) {
           edgeFile << ',' << static_cast<float>(*it);
           ++it;
@@ -164,6 +173,71 @@ public:
     }
     edgeFile.close();
   }
+
+#ifdef WITH_MSGPACK
+  void writeMsgpack(bool compress) {
+    msgpack::sbuffer buffer;
+
+    msgpack::packer<msgpack::sbuffer> pk(&buffer);
+    // Two top level keys: nodes and edges
+    pk.pack_map(2);
+
+    // 1: Nodes
+    pk.pack(std::string("nodes"));
+
+    const auto &nodes = mGraphData->getNodes();
+    auto &nodeData = mGraphData->getNodeData();
+
+    // Positions array
+    pk.pack_map(1 + nodeData.size());
+    pk.pack(std::string("pos"));
+    pk.pack(nodes);
+
+    // Node Data
+    for (unsigned i = 0; i < nodeData.size(); ++i) {
+      pk.pack(mGraphData->getNodeDataLabel(i));
+      pk.pack(nodeData[i]);
+    }
+
+    // 2: Edges
+    pk.pack(std::string("edges"));
+
+    const auto &edges = mGraphData->getEdges();
+    auto &edgeData = mGraphData->getEdgeData();
+
+    // Connectivity
+    pk.pack_map(2 + edgeData.size());
+    pk.pack(std::string("from"));
+    pk.pack_array(edges.size() / 2);
+    for (unsigned i = 0; i < edges.size() / 2; ++i) {
+      pk.pack(edges[2 * i]);
+    }
+    pk.pack(std::string("to"));
+    pk.pack_array(edges.size() / 2);
+    for (unsigned i = 0; i < edges.size() / 2; ++i) {
+      pk.pack(edges[2 * i + 1]);
+    }
+
+    // Edge Data
+    for (unsigned i = 0; i < edgeData.size(); ++i) {
+      pk.pack(mGraphData->getEdgeDataLabel(i));
+      pk.pack(edgeData[i]);
+    }
+
+    if (!compress) {
+      // Uncompressed write
+      std::ofstream of(fileName);
+      of.write(buffer.data(), buffer.size());
+    }
+#ifdef WITH_GZIP
+    else {
+      // Write using gzip compression
+      gzip_ofstream gzip(fileName);
+      gzip.write(buffer.data(), buffer.size());
+    }
+#endif
+  }
+#endif
 
   void apply() {
     // check graph
@@ -191,6 +265,10 @@ public:
           fileFormat = cmFileFormatEnum::VTK_LEGACY;
         } else if (ending == ".vtp") {
           fileFormat = cmFileFormatEnum::VTP;
+        } else if (ending == ".msgpack") {
+          fileFormat = cmFileFormatEnum::MSGPACK;
+        } else if (ending == ".gz") {
+          fileFormat = cmFileFormatEnum::MSGPACK_GZIP;
         } else {
           lsMessage::getInstance()
               .addWarning("No valid file format found based on the file ending "
@@ -209,6 +287,33 @@ public:
     case cmFileFormatEnum::MULTI:
       writeMulti();
       break;
+#ifdef WITH_MSGPACK
+    case cmFileFormatEnum::MSGPACK:
+      writeMsgpack(false);
+      break;
+#ifdef WITH_GZIP
+    case cmFileFormatEnum::MSGPACK_GZIP:
+      writeMsgpack(true);
+      break;
+#else
+    case cmFileFormatEnum::MSGPACK_GZIP:
+      lsMessage::getInstance()
+          .addWarning(
+              "cmGraphWriter was built without GZIP support. Falling back "
+              "to uncompressed MSGPACK.")
+          .print();
+      writeMsgpack(false);
+      break;
+#endif
+#else
+    case cmFileFormatEnum::MSGPACK:
+    case cmFileFormatEnum::MSGPACK_GZIP:
+#endif
+    default:
+      lsMessage::getInstance()
+          .addWarning(
+              "No valid file format set for cmGraphWriter. Not writing.")
+          .print();
     }
   }
 };

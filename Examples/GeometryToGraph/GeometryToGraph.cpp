@@ -33,7 +33,7 @@ int main() {
     rtBC[i] = rayTraceBoundary::REFLECTIVE;
 
   cmUniformRaySampler<NumericType, D> sampler(numRaysPerPoint);
-  //cmCosineDistributionRaySampler<NumericType, D> sampler(numRaysPerPoint);
+  // cmCosineDistributionRaySampler<NumericType, D> sampler(numRaysPerPoint);
   cmRayTraceGraph<NumericType, D, GraphNumericType> tracer(sampler);
 
   tracer.setSourceDirection(D == 2 ? rayTraceDirection::POS_Y
@@ -70,4 +70,14 @@ int main() {
   cmGraphWriter<GraphNumericType>(
       lsSmartPointer<decltype(graphData)>::New(graphData), "graph")
       .apply();
+#ifdef WITH_MSGPACK
+  cmGraphWriter<GraphNumericType>(
+      lsSmartPointer<decltype(graphData)>::New(graphData), "graph.msgpack")
+      .apply();
+#ifdef WITH_GZIP
+  cmGraphWriter<GraphNumericType>(
+      lsSmartPointer<decltype(graphData)>::New(graphData), "graph.msgpack.gz")
+      .apply();
+#endif
+#endif
 }

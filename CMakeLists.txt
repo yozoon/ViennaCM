@@ -57,6 +57,18 @@ else(VTK_FOUND)
   message(FATAL_ERROR "No VTK install found.")
 endif(VTK_FOUND)
 
+option(WITH_GZIP "Build with support for Gzip compression." OFF)
+if(WITH_GZIP)
+  find_package(ZLIB REQUIRED)
+  add_compile_definitions(WITH_GZIP)
+endif(WITH_GZIP)
+
+option(WITH_MSGPACK "Build with support for msgpack format." OFF)
+if(WITH_MSGPACK)
+  find_package(msgpack REQUIRED)
+  add_compile_definitions(WITH_MSGPACK)
+endif(WITH_MSGPACK)
+
 #################################################
 # BUILD EXAMPLES
 #################################################
