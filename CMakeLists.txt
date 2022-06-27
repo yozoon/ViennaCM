@@ -77,6 +77,7 @@ option(WITH_MSGPACK "Build with support for msgpack format." OFF)
 if(WITH_MSGPACK)
   find_package(msgpack REQUIRED)
   list(APPEND VIENNACM_LIBRARIES msgpackc-cxx)
+  list(APPEND VIENNACM_INCLUDE_DIRS INTERFACE msgpack-cxx)
   add_compile_definitions(WITH_MSGPACK)
 endif(WITH_MSGPACK)
 
