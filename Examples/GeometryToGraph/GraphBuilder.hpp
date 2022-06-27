@@ -10,7 +10,7 @@ class GraphBuilder
     : public cmGraphBuilder<GraphBuilder<NumericType, GraphNumericType>,
                             NumericType, GraphNumericType> {
 public:
-  constexpr bool connectNeighbors() const override { return true; };
+  const bool connectNeighbors() const override { return true; };
 
   static constexpr char edgeLengthLabel[] = "length";
   static constexpr char edgeOutboundAngleLabel[] = "outboundAngle";

@@ -49,7 +49,7 @@ public:
   virtual std::vector<std::string> getNodeDataLabels() const = 0;
   virtual std::vector<std::string> getEdgeDataLabels() const = 0;
 
-  virtual constexpr bool connectNeighbors() const = 0;
+  virtual const bool connectNeighbors() const = 0;
 
   virtual void connectNeighbor(
       const unsigned int fromID, const unsigned int neighborID,
