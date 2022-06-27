@@ -71,17 +71,14 @@ if(WITH_GZIP)
   find_package(ZLIB REQUIRED)
   list(APPEND VIENNACM_LIBRARIES ZLIB::ZLIB)
   add_compile_definitions(WITH_GZIP)
-  endif(WITH_GZIP)
+endif(WITH_GZIP)
 
-  option(WITH_MSGPACK "Build with support for msgpack format." OFF)
-  if(WITH_MSGPACK)
+option(WITH_MSGPACK "Build with support for msgpack format." OFF)
+if(WITH_MSGPACK)
   find_package(msgpack REQUIRED)
-  message(INFO ${msgpack_INCLUDEDIR})
   list(APPEND VIENNACM_LIBRARIES msgpackc-cxx)
-  list(APPEND VIENNACM_INCLUDE_DIRS ${msgpack_INCLUDEDIR})
   add_compile_definitions(WITH_MSGPACK)
 endif(WITH_MSGPACK)
-message(INFO ${VIENNACM_INCLUDE_DIRS})
 
 #################################################
 # BUILD EXAMPLES
