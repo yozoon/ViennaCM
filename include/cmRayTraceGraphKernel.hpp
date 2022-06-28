@@ -106,8 +106,9 @@ shared(threadLocalGraphData)
       rayRNG RngState1(seeds[0]);
       rayRNG RngState5(seeds[4]);
 
-      // thread-local graph builder object
+      // thread-local graph builder and sampler object
       auto builder = mBuilder->clone();
+      auto sampler = mSampler->clone();
 
       auto &myLocalGraphData = threadLocalGraphData[threadID];
 
@@ -143,7 +144,7 @@ shared(threadLocalGraphData)
           unsigned dataIndex = numOfRaysPerPoint * idx + dirIdx;
 
           auto &ray = rayHit.ray;
-          auto rayDir = mSampler->getDirection(RngState1, surfaceNormal, dirIdx);
+          auto rayDir = sampler->getDirection(RngState1, surfaceNormal, dirIdx);
 
           // Ensure that the direction is normalized
           rayInternal::Normalize(rayDir);
