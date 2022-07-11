@@ -218,9 +218,9 @@ shared(threadLocalGraphData)
             for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
               const auto matID = mGeometry.getMaterialId(hitDiskIds[diskId]);
               const auto normal = mGeometry.getPrimNormal(hitDiskIds[diskId]);
-              builder->surfaceCollision(idx, ray, normal, hitDiskIds[diskId],
-                                        matID, myLocalGraphData, globalData,
-                                        RngState5);
+              builder->surfaceCollision(
+                  idx, ray, surfaceNormal, normal, hitDiskIds[diskId], matID,
+                  myLocalGraphData, globalData, RngState5);
             }
             // Stop after this one iteration (we don't use any reflections)
             break;

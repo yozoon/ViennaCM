@@ -24,9 +24,10 @@ public:
   /// localData: user-defined data;
   /// globalData: constant user-defined data;
   /// Rng: thread-safe randon number generator (standard library conform);
-  virtual void surfaceCollision(const unsigned int fromID, const RTCRay &ray,
-                                const rayTriple<NumericType> &geomNormal,
-                                const unsigned int toID, const int materialId,
+  virtual void surfaceCollision(const unsigned int originID, const RTCRay &ray,
+                                const rayTriple<NumericType> &originNormal,
+                                const rayTriple<NumericType> &destNormal,
+                                const unsigned int destID, const int materialId,
                                 cmGraphData<GraphNumericType> &localGraphData,
                                 const rayTracingData<NumericType> *globalData,
                                 rayRNG &Rng) = 0;
@@ -34,7 +35,7 @@ public:
   // Source collision. This function gets called whenever a ray hits the source
   // plane.
   virtual void sourceCollision(
-      const unsigned int fromID, const rayTriple<NumericType> &rayOrigin,
+      const unsigned int originID, const rayTriple<NumericType> &rayOrigin,
       const rayTriple<NumericType> &rayDir,
       const rayTriple<NumericType> &geomNormal, const unsigned int sourceID,
       const rayTriple<NumericType> &sourceCenter, const int sourceDir,
@@ -52,7 +53,7 @@ public:
   virtual const bool connectNeighbors() const = 0;
 
   virtual void connectNeighbor(
-      const unsigned int fromID, const unsigned int neighborID,
+      const unsigned int originID, const unsigned int neighborID,
       const NumericType distance, const rayTriple<NumericType> &geomNormal,
       const rayTriple<NumericType> &neighborNormal, const int materialId,
       cmGraphData<GraphNumericType> &localGraphData,
@@ -71,23 +72,24 @@ public:
     return std::make_unique<Derived>(static_cast<Derived const &>(*this));
   }
 
-  virtual void surfaceCollision(const unsigned int fromID, const RTCRay &ray,
-                                const rayTriple<NumericType> &geomNormal,
-                                const unsigned int toID, const int materialId,
+  virtual void surfaceCollision(const unsigned int originID, const RTCRay &ray,
+                                const rayTriple<NumericType> &originNormal,
+                                const rayTriple<NumericType> &destNormal,
+                                const unsigned int destID, const int materialId,
                                 cmGraphData<GraphNumericType> &localGraphData,
                                 const rayTracingData<NumericType> *globalData,
                                 rayRNG &Rng) override {}
 
   virtual void sourceCollision(
-      const unsigned int fromID, const rayTriple<NumericType> &rayOrigin,
+      const unsigned int originID, const rayTriple<NumericType> &rayOrigin,
       const rayTriple<NumericType> &rayDir,
-      const rayTriple<NumericType> &geomNormal, const unsigned int sourceID,
+      const rayTriple<NumericType> &originNormal, const unsigned int sourceID,
       const rayTriple<NumericType> &sourceCenter, const int sourceDir,
       const int posNeg, cmGraphData<GraphNumericType> &localGraphData,
       const rayTracingData<NumericType> *globalData, rayRNG &Rng) override {}
 
   virtual void connectNeighbor(
-      const unsigned int fromID, const unsigned int neighborID,
+      const unsigned int originID, const unsigned int neighborID,
       const NumericType distance, const rayTriple<NumericType> &geomNormal,
       const rayTriple<NumericType> &neighborNormal, const int materialId,
       cmGraphData<GraphNumericType> &localGraphData,

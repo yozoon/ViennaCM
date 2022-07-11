@@ -17,13 +17,14 @@ public:
   static constexpr char edgeInboundAngleLabel[] = "inboundAngle";
   static constexpr char edgeSourceConnectionLabel[] = "sourceConnection";
 
-  void surfaceCollision(const unsigned int fromID, const RTCRay &ray,
-                        const rayTriple<NumericType> &geomNormal,
-                        const unsigned int toID, const int materialId,
+  void surfaceCollision(const unsigned int originID, const RTCRay &ray,
+                        const rayTriple<NumericType> &originNormal,
+                        const rayTriple<NumericType> &destNormal,
+                        const unsigned int destID, const int materialId,
                         cmGraphData<GraphNumericType> &localGraphData,
                         const rayTracingData<NumericType> *globalData,
                         rayRNG &Rng) override final {
-    localGraphData.addEdge(fromID, toID);
+    localGraphData.addEdge(originID, destID);
 
     // Edge length
     // TODO: This is only correct for the first intersection. Subsequent
@@ -35,19 +36,19 @@ public:
 
     // Outbound angle
     GraphNumericType outboundDot = std::min(
-        std::max(rayInternal::DotProduct(geomNormal, rayDir), -1.), 1.);
+        std::max(rayInternal::DotProduct(originNormal, rayDir), -1.), 1.);
     localGraphData.pushBackEdgeData(1, std::acos(outboundDot));
 
     // Inbound angle
     GraphNumericType inboundDot = std::min(
-        std::max(rayInternal::DotProduct(geomNormal, invRayDir), -1.), 1.);
+        std::max(rayInternal::DotProduct(destNormal, invRayDir), -1.), 1.);
     localGraphData.pushBackEdgeData(2, std::acos(inboundDot));
 
     // Source connection
     localGraphData.pushBackEdgeData(3, 0.);
   }
 
-  void sourceCollision(const unsigned int fromID,
+  void sourceCollision(const unsigned int originID,
                        const rayTriple<NumericType> &rayOrigin,
                        const rayTriple<NumericType> &rayDir,
                        const rayTriple<NumericType> &geomNormal,
@@ -57,7 +58,7 @@ public:
                        cmGraphData<GraphNumericType> &localGraphData,
                        const rayTracingData<NumericType> *globalData,
                        rayRNG &Rng) override final {
-    localGraphData.addEdge(fromID, sourceID);
+    localGraphData.addEdge(originID, sourceID);
 
     // Edge length
     localGraphData.pushBackEdgeData(
