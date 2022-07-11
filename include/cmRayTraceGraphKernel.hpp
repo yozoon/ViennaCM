@@ -182,7 +182,7 @@ shared(threadLocalGraphData)
 
             /* ------- Source Plane Hit ----- */
             if (rayHit.hit.geomID == sourceID) {
-              builder->sourceCollision(idx, rayOrigin, rayDir, geomNormal,
+              builder->sourceCollision(idx, rayOrigin, rayDir, surfaceNormal,
                                        sourceColID, sourceCenter, sourceDir,
                                        sourcePosNeg, myLocalGraphData,
                                        globalData, RngState5);
