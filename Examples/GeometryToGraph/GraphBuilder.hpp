@@ -53,7 +53,7 @@ public:
                        const rayTriple<NumericType> &geomNormal,
                        const unsigned int sourceID,
                        const rayTriple<NumericType> &sourceCenter,
-                       const unsigned int sourceDir, const unsigned int posNeg,
+                       const int sourceDir, const int posNeg,
                        cmGraphData<GraphNumericType> &localGraphData,
                        const rayTracingData<NumericType> *globalData,
                        rayRNG &Rng) override final {

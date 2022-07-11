@@ -93,7 +93,6 @@ public:
 
     // Add point coordinates to the graph data
     auto &nodes = mLocalGraphData.getNodes();
-    nodes.clear();
     nodes.reserve(mGeometry.getNumPoints() + 1);
     for (size_t i = 0; i < mGeometry.getNumPoints(); ++i) {
       const auto &point = mGeometry.getPoint(i);

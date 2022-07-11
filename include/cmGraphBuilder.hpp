@@ -37,8 +37,8 @@ public:
       const unsigned int fromID, const rayTriple<NumericType> &rayOrigin,
       const rayTriple<NumericType> &rayDir,
       const rayTriple<NumericType> &geomNormal, const unsigned int sourceID,
-      const rayTriple<NumericType> &sourceCenter, const unsigned int sourceDir,
-      const unsigned int posNeg, cmGraphData<GraphNumericType> &localGraphData,
+      const rayTriple<NumericType> &sourceCenter, const int sourceDir,
+      const int posNeg, cmGraphData<GraphNumericType> &localGraphData,
       const rayTracingData<NumericType> *globalData, rayRNG &Rng) = 0;
 
   /// Set the number of required data vectors for this particle to
@@ -82,8 +82,8 @@ public:
       const unsigned int fromID, const rayTriple<NumericType> &rayOrigin,
       const rayTriple<NumericType> &rayDir,
       const rayTriple<NumericType> &geomNormal, const unsigned int sourceID,
-      const rayTriple<NumericType> &sourceCenter, const unsigned int sourceDir,
-      const unsigned int posNeg, cmGraphData<GraphNumericType> &localGraphData,
+      const rayTriple<NumericType> &sourceCenter, const int sourceDir,
+      const int posNeg, cmGraphData<GraphNumericType> &localGraphData,
       const rayTracingData<NumericType> *globalData, rayRNG &Rng) override {}
 
   virtual void connectNeighbor(

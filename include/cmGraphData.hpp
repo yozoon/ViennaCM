@@ -91,7 +91,9 @@ public:
     nodes.clear();
     edges.clear();
     nodeData.clear();
+    nodeDataLabels.clear();
     edgeData.clear();
+    edgeDataLabels.clear();
   }
 
   // Add edge
