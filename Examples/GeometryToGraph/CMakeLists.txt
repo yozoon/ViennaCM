@@ -5,6 +5,7 @@ project("GeometryToGraph")
 add_executable(${PROJECT_NAME} ${PROJECT_NAME}.cpp)
 target_include_directories(${PROJECT_NAME} PUBLIC ${VIENNACM_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${VIENNACM_LIBRARIES})
+
 if(WITH_GZIP)
     target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
 endif(WITH_GZIP)

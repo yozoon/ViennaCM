@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CM_GRAPH_WRITER
+#define CM_GRAPH_WRITER
 
 #include <fstream>
 #include <sstream>
@@ -12,20 +13,12 @@
 #ifdef WITH_MSGPACK
 #include <msgpack.hpp>
 #ifdef WITH_GZIP
-#include <cmGzipStreams.hpp>
+#include <cmGzipUtils.hpp>
 #endif
 #endif
 
+#include <cmFileFormats.hpp>
 #include <cmGraphData.hpp>
-
-enum cmFileFormatEnum : unsigned {
-  VTK_LEGACY = 0,
-  VTP = 1,
-  MULTI = 2,
-  MSGPACK = 3,
-  MSGPACK_GZIP = 4,
-  AUTO = 5,
-};
 
 template <class NumericType> class cmGraphWriter {
   lsSmartPointer<cmGraphData<NumericType>> mGraphData = nullptr;
@@ -224,16 +217,21 @@ public:
       pk.pack(edgeData[i]);
     }
 
+    // Uncompressed write
+    std::ofstream ofstr(fileName, std::ios::binary);
     if (!compress) {
-      // Uncompressed write
-      std::ofstream of(fileName);
-      of.write(buffer.data(), buffer.size());
+      ofstr.write(buffer.data(), buffer.size());
     }
 #ifdef WITH_GZIP
     else {
       // Write using gzip compression
-      gzip_ofstream gzip(fileName);
-      gzip.write(buffer.data(), buffer.size());
+      CharStreamWrapper wrapper(buffer.data(), buffer.data() + buffer.size());
+      std::istream istr(&wrapper);
+      writeCompressed(istr, std::ostream_iterator<char>(ofstr));
+    }
+#else
+    else {
+      return;
     }
 #endif
   }
@@ -272,7 +270,7 @@ public:
         } else {
           lsMessage::getInstance()
               .addWarning("No valid file format found based on the file ending "
-                          "passed to lsVTKWriter. Not writing.")
+                          "passed to cmGraphWriter. Not writing.")
               .print();
           return;
         }
@@ -299,10 +297,8 @@ public:
     case cmFileFormatEnum::MSGPACK_GZIP:
       lsMessage::getInstance()
           .addWarning(
-              "cmGraphWriter was built without GZIP support. Falling back "
-              "to uncompressed MSGPACK.")
+              "cmGraphWriter was built without GZIP support. Not writing.")
           .print();
-      writeMsgpack(false);
       break;
 #endif
 #else
@@ -317,3 +313,5 @@ public:
     }
   }
 };
+
+#endif

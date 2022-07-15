@@ -7,6 +7,7 @@
 #include <lsVTKWriter.hpp>
 
 #include <cmGraphData.hpp>
+#include <cmGraphReader.hpp>
 #include <cmGraphWriter.hpp>
 #include <cmRayTraceGraph.hpp>
 
@@ -66,21 +67,28 @@ int main() {
             << "\nNumber of edges: " << graphData.getEdges().size() / 2
             << std::endl;
 
-  cmGraphWriter<GraphNumericType>(
-      lsSmartPointer<decltype(graphData)>::New(graphData), "graph.vtp")
-      .apply();
+  auto graphDataPtr = lsSmartPointer<decltype(graphData)>::New(graphData);
 
-  cmGraphWriter<GraphNumericType>(
-      lsSmartPointer<decltype(graphData)>::New(graphData), "graph")
-      .apply();
+  /** Writing **/
+
+  cmGraphWriter<GraphNumericType>(graphDataPtr, "graph.vtp").apply();
+
+  cmGraphWriter<GraphNumericType>(graphDataPtr, "graph").apply();
 #ifdef WITH_MSGPACK
-  cmGraphWriter<GraphNumericType>(
-      lsSmartPointer<decltype(graphData)>::New(graphData), "graph.msgpack")
-      .apply();
+  cmGraphWriter<GraphNumericType>(graphDataPtr, "graph.msgpack").apply();
 #ifdef WITH_GZIP
-  cmGraphWriter<GraphNumericType>(
-      lsSmartPointer<decltype(graphData)>::New(graphData), "graph.msgpack.gz")
-      .apply();
+  cmGraphWriter<GraphNumericType>(graphDataPtr, "graph.msgpack.gz").apply();
+#endif
+#endif
+
+  /** Reading **/
+
+#ifdef WITH_MSGPACK
+  auto gdPtr1 = lsSmartPointer<decltype(graphData)>::New();
+  cmGraphReader<GraphNumericType>(gdPtr1, "graph.msgpack").apply();
+#ifdef WITH_GZIP
+  auto gdPtr2 = lsSmartPointer<decltype(graphData)>::New();
+  cmGraphReader<GraphNumericType>(gdPtr2, "graph.msgpack.gz").apply();
 #endif
 #endif
 }
