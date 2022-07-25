@@ -219,6 +219,16 @@ public:
 
   const std::vector<vectorDataType> &getEdgeData() const { return edgeData; }
 
+  std::vector<std::string> &getNodeDataLabels() { return nodeDataLabels; }
+  const std::vector<std::string> &getNodeDataLabels() const {
+    return nodeDataLabels;
+  }
+
+  std::vector<std::string> &getEdgeDataLabels() { return edgeDataLabels; }
+  const std::vector<std::string> &getEdgeDataLabels() const {
+    return edgeDataLabels;
+  }
+
   // Node Label / Index lookup
 
   std::string getNodeDataLabel(int i) const {
