@@ -55,7 +55,7 @@ public:
                        const rayTriple<NumericType> &originNormal,
                        const rayTriple<NumericType> &rayDir,
                        const rayTriple<NumericType> &sourceCenter,
-                       const int sourceDir, const int posNeg,
+                       const int sourceDir, const int posNeg, const RTCRay &ray,
                        cmGraphData<GraphNumericType> &localGraphData,
                        const rayTracingData<NumericType> *globalData,
                        rayRNG &Rng) override final {

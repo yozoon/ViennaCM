@@ -184,7 +184,7 @@ shared(threadLocalGraphData)
             if (rayHit.hit.geomID == sourceID) {
               builder->sourceCollision(idx, sourceColID, rayOrigin,
                                        surfaceNormal, rayDir, sourceCenter,
-                                       sourceDir, sourcePosNeg,
+                                       sourceDir, sourcePosNeg, ray,
                                        myLocalGraphData, globalData, RngState5);
               break;
             }
