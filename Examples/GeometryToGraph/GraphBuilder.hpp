@@ -17,10 +17,12 @@ public:
   static constexpr char edgeInboundAngleLabel[] = "inboundAngle";
   static constexpr char edgeSourceConnectionLabel[] = "sourceConnection";
 
-  void surfaceCollision(const unsigned int originID, const RTCRay &ray,
+  void surfaceCollision(const unsigned int originID, const unsigned int destID,
+                        const rayTriple<NumericType> &origin,
+                        const rayTriple<NumericType> &dest,
                         const rayTriple<NumericType> &originNormal,
                         const rayTriple<NumericType> &destNormal,
-                        const unsigned int destID, const int materialId,
+                        const int materialId, const RTCRay &ray,
                         cmGraphData<GraphNumericType> &localGraphData,
                         const rayTracingData<NumericType> *globalData,
                         rayRNG &Rng) override final {
@@ -48,11 +50,10 @@ public:
     localGraphData.pushBackEdgeData(3, 0.);
   }
 
-  void sourceCollision(const unsigned int originID,
-                       const rayTriple<NumericType> &rayOrigin,
+  void sourceCollision(const unsigned int originID, const unsigned int sourceID,
+                       const rayTriple<NumericType> &origin,
+                       const rayTriple<NumericType> &originNormal,
                        const rayTriple<NumericType> &rayDir,
-                       const rayTriple<NumericType> &geomNormal,
-                       const unsigned int sourceID,
                        const rayTriple<NumericType> &sourceCenter,
                        const int sourceDir, const int posNeg,
                        cmGraphData<GraphNumericType> &localGraphData,
@@ -62,11 +63,11 @@ public:
 
     // Edge length
     localGraphData.pushBackEdgeData(
-        0, std::abs(rayOrigin[sourceDir] - sourceCenter[sourceDir]));
+        0, std::abs(origin[sourceDir] - sourceCenter[sourceDir]));
 
     // Outbound angle
     GraphNumericType outboundDot = std::min(
-        std::max(rayInternal::DotProduct(geomNormal, rayDir), -1.), 1.);
+        std::max(rayInternal::DotProduct(originNormal, rayDir), -1.), 1.);
     localGraphData.pushBackEdgeData(1, std::acos(outboundDot));
 
     // Inbound angle

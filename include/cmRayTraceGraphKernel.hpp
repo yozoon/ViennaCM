@@ -182,10 +182,10 @@ shared(threadLocalGraphData)
 
             /* ------- Source Plane Hit ----- */
             if (rayHit.hit.geomID == sourceID) {
-              builder->sourceCollision(idx, rayOrigin, rayDir, surfaceNormal,
-                                       sourceColID, sourceCenter, sourceDir,
-                                       sourcePosNeg, myLocalGraphData,
-                                       globalData, RngState5);
+              builder->sourceCollision(idx, sourceColID, rayOrigin,
+                                       surfaceNormal, rayDir, sourceCenter,
+                                       sourceDir, sourcePosNeg,
+                                       myLocalGraphData, globalData, RngState5);
               break;
             }
 
@@ -212,15 +212,16 @@ shared(threadLocalGraphData)
                 hitDiskIds.push_back(id);
               }
             }
-            const size_t numDisksHit = hitDiskIds.size();
 
             // for each disk hit
-            for (size_t diskId = 0; diskId < numDisksHit; ++diskId) {
-              const auto matID = mGeometry.getMaterialId(hitDiskIds[diskId]);
-              const auto normal = mGeometry.getPrimNormal(hitDiskIds[diskId]);
+            for (auto diskId : hitDiskIds) {
+              const auto matID = mGeometry.getMaterialId(diskId);
+              const auto normal = mGeometry.getPrimNormal(diskId);
+              const auto dest = mGeometry.getPoint(diskId);
+
               builder->surfaceCollision(
-                  idx, ray, surfaceNormal, normal, hitDiskIds[diskId], matID,
-                  myLocalGraphData, globalData, RngState5);
+                  idx, diskId, rayOrigin, dest, surfaceNormal, normal, matID,
+                  ray, myLocalGraphData, globalData, RngState5);
             }
             // Stop after this one iteration (we don't use any reflections)
             break;
