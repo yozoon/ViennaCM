@@ -177,6 +177,22 @@ public:
     mSourceDirection = pDirection;
   }
 
+  /// Helper function to smooth the recorded data by averaging over the
+  /// neighborhood in a post-processing step.
+  void smoothNodeData(std::vector<NumericType> &data) {
+    assert(data.size() == mGeometry.getNumPoints() &&
+           "Unequal number of points in smoothData");
+    auto oldData = data;
+#pragma omp parallel for
+    for (size_t idx = 0; idx < mGeometry.getNumPoints(); idx++) {
+      auto neighborhood = mGeometry.getNeighborIndicies(idx);
+      for (auto const &nbi : neighborhood) {
+        data[idx] += oldData[nbi];
+      }
+      data[idx] /= (neighborhood.size() + 1);
+    }
+  }
+
   cmGraphData<GraphNumericType> &getLocalGraphData() { return mLocalGraphData; }
 
   rayTracingData<NumericType> *getGlobalData() { return mGlobalData; }
