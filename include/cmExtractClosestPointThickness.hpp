@@ -55,12 +55,14 @@ public:
     }
 
     auto &cellData = baseMesh->getCellData();
-    auto index = cellData.getScalarDataIndex("layerThickness");
+    auto index = cellData.getScalarDataIndex(layerThicknessLabel);
     if (index >= 0)
       cellData.eraseScalarData(index);
 
-    cellData.insertNextScalarData(layerThickness, "layerThickness");
+    cellData.insertNextScalarData(layerThickness, layerThicknessLabel);
   }
+
+  static constexpr char layerThicknessLabel[] = "layerThickness";
 };
 
 #endif
